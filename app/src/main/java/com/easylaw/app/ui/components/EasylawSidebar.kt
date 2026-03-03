@@ -65,7 +65,7 @@ fun EasylawSideBar(
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = userInfo.email.ifEmpty { "easylaw@example.com" },
+                    text = userInfo.email,
                     style = TextStyle(fontSize = 14.sp, color = Color(0xFF8B95A1)),
                 )
 

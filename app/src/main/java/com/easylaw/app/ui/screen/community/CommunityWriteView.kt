@@ -32,6 +32,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -46,6 +47,8 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.easylaw.app.ui.components.CommonButton
 import com.easylaw.app.ui.components.CommonDialog
+import com.easylaw.app.ui.components.CommonIndicator
+import com.easylaw.app.ui.components.CommonPreview
 import com.easylaw.app.ui.components.CommonTextField
 import com.easylaw.app.viewmodel.CommunityWriteViewModel
 
@@ -54,6 +57,7 @@ import com.easylaw.app.viewmodel.CommunityWriteViewModel
 fun CommunityWriteView(
     modifier: Modifier = Modifier,
     viewModel: CommunityWriteViewModel,
+    goBack: () -> Unit,
 ) {
     val viewState by viewModel.commnuityWriteViewState.collectAsState()
     val scrollState = rememberScrollState()
@@ -74,228 +78,217 @@ fun CommunityWriteView(
                 viewModel.onImageAdded(it.toString())
             }
         }
-    if (viewState.isShowDialog) {
-        CommonDialog(
-            title = "사진 추가 제한",
-            desc = "사진은 최대 3장까지만 등록할 수 있습니다.",
-            icon = Icons.Default.Close,
-            onConfirm = { viewModel.closeShowDialog() },
-        )
+    // LaunchedEffect(Unit) : 화면이 시작되면 감지 시작
+    LaunchedEffect(Unit) {
+        // channel, collect : 뒤로 가기 로직
+        viewModel.isWriteSuccess.collect {
+            goBack()
+        }
     }
-//    viewState.previewImage?.let { uri ->
-//        Dialog(
-//            onDismissRequest = { viewModel.onImagePreviewDismissed() },
-//            properties = DialogProperties(usePlatformDefaultWidth = true)
-//        ) {
-//            Box(
-//                modifier = Modifier
-//                    .fillMaxWidth()
-//                    .height(500.dp)
-//                    .clip(RoundedCornerShape(24.dp))
-//                    .background(Color.White)
-//            ) {
-//                AndroidView(
-//                    factory = { context ->
-//                        PhotoView(context).apply {
-//                            load(uri)
-//                        }
-//                    },
-//                    modifier = Modifier.fillMaxSize().padding(12.dp)
-//                )
-//
-//                IconButton(
-//                    onClick = { viewModel.onImagePreviewDismissed() },
-//                    modifier = Modifier.align(Alignment.TopEnd).padding(8.dp)
-//                ) {
-//                    Icon(
-//                        imageVector = Icons.Default.Close,
-//                        contentDescription = "닫기",
-//                        tint = Color(0xFF8B95A1)
-//                    )
-//                }
-//            }
-//        }
-//    }
-    Scaffold(
-        bottomBar = {
-            Column(
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .background(Color.White)
-                        .navigationBarsPadding() // 하단바 공간 확보
-                        .padding(horizontal = 20.dp, vertical = 12.dp),
-            ) {
-                CommonButton(
+    Box {
+        Scaffold(
+            bottomBar = {
+                Column(
                     modifier =
                         Modifier
                             .fillMaxWidth()
-                            .height(56.dp),
-                    text = "작성 완료",
-                    isEnable = false,
-                    onClick = { },
-                    color = Color(0xFF3182F6),
-                    icon = Icons.Default.Check,
-                )
-            }
-        },
-        containerColor = Color.White,
-    ) { innerPadding ->
-        Column(
-            modifier =
-                Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding) // 하단 버튼 높이만큼 자동 패딩
-                    .padding(horizontal = 20.dp)
-                    .verticalScroll(scrollState),
-        ) {
-            Spacer(modifier = Modifier.height(24.dp))
-
-            // 분야 선택 섹션
-            Text(
-                text = "어떤 분야의 고민인가요?",
-                style =
-                    TextStyle(
-                        fontSize = 14.sp,
-                        color = Color(0xFF4E5968),
-                        fontWeight = FontWeight.Medium,
-                    ),
-                modifier = Modifier.padding(vertical = 12.dp),
-            )
-
-            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                items(viewState.categories) { category ->
-                    val isSelected = (viewState.selectedCategory == category)
-                    FilterChip(
-                        selected = isSelected,
-                        onClick = { viewModel.onCategorySelected(category) },
-                        label = {
-                            Text(
-                                text = category,
-                                style =
-                                    TextStyle(
-                                        fontSize = 14.sp,
-                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                                    ),
-                            )
+                            .background(Color.White)
+                            .navigationBarsPadding() // 하단바 공간 확보
+                            .padding(horizontal = 20.dp, vertical = 12.dp),
+                ) {
+                    CommonButton(
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .height(56.dp),
+                        text = "작성 완료",
+                        isEnable =
+                            if (
+                                viewState.communityWriteTitleField.isNotEmpty() &&
+                                viewState.communityWriteContentField.isNotEmpty()
+                            ) {
+                                true
+                            } else {
+                                false
+                            },
+                        onClick = {
+                            //                        디비 연동
+                            viewModel.writeCommunity()
                         },
-                        shape = RoundedCornerShape(20.dp),
-                        colors =
-                            FilterChipDefaults.filterChipColors(
-                                containerColor = Color(0xFFF2F4F6),
-                                labelColor = Color(0xFF4E5968),
-                                selectedContainerColor = Color(0xFF3182F6).copy(alpha = 0.1f),
-                                selectedLabelColor = Color(0xFF3182F6),
-                            ),
-                        border =
-                            FilterChipDefaults.filterChipBorder(
-                                enabled = true,
-                                borderColor = Color.Transparent,
-                                selected = isSelected,
-                                selectedBorderColor = Color(0xFF3182F6),
-                                borderWidth = 2.dp,
-                                selectedBorderWidth = 2.dp,
-                            ),
+                        color = Color(0xFF3182F6),
+                        icon = Icons.Default.Check,
                     )
                 }
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            CommonTextField(
-                title = "제목",
-                value = viewState.communityWriteTitleField,
-                placeholder = "제목을 입력해주세요.",
-                onValueChange = { viewModel.onTitleFieldChanged(it) },
-            )
-
-            CommonTextField(
-                title = "본문",
-                value = viewState.communityWriteContentField,
-                placeholder = "본문을 입력해주세요.",
-                singleLine = false,
+            },
+            containerColor = Color.White,
+        ) { innerPadding ->
+            Column(
                 modifier =
                     Modifier
-                        .fillMaxWidth()
-                        .height(300.dp),
-                onValueChange = { viewModel.onContentFieldChanged(it) },
-            )
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            Box(
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(16.dp))
-                        .background(Color(0xFFF9FAFB))
-                        .padding(16.dp),
+                        .fillMaxSize()
+                        .padding(innerPadding) // 하단 버튼 높이만큼 자동 패딩
+                        .padding(horizontal = 20.dp)
+                        .verticalScroll(scrollState),
             ) {
-                Column {
-                    Text(
-                        text = "첨부된 사진 ${viewState.selectedImages.size}/3",
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFF8B95A1),
-                        modifier = Modifier.padding(bottom = 12.dp),
-                    )
-                    LazyRow(
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        item {
-                            CommonImageButton(
-                                onClick = {
-                                    if (viewState.selectedImages.size < 3) {
-                                        galleryLauncher.launch("image/*")
-                                    } else {
-                                        viewModel.onShowDialog()
-                                    }
-                                },
-                            )
-                        }
+                Spacer(modifier = Modifier.height(24.dp))
 
-                        items(viewState.selectedImages) { imageUri ->
-                            Box(
-                                modifier =
-                                    Modifier
-                                        .size(56.dp)
-                                        .clickable { viewModel.onImagePreview(imageUri) }
-                                        .background(Color.White, RoundedCornerShape(12.dp)),
-                            ) {
-                                AsyncImage(
-                                    model = imageUri,
-                                    contentDescription = null,
-                                    modifier =
-                                        Modifier
-                                            .fillMaxSize()
-                                            .clip(RoundedCornerShape(12.dp)),
-                                    contentScale = ContentScale.Crop,
+                // 분야 선택 섹션
+                Text(
+                    text = "어떤 분야의 고민인가요?",
+                    style =
+                        TextStyle(
+                            fontSize = 14.sp,
+                            color = Color(0xFF4E5968),
+                            fontWeight = FontWeight.Medium,
+                        ),
+                    modifier = Modifier.padding(vertical = 12.dp),
+                )
+
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    items(viewState.categories) { category ->
+                        val isSelected = (viewState.selectedCategory == category)
+                        FilterChip(
+                            selected = isSelected,
+                            onClick = { viewModel.onCategorySelected(category) },
+                            label = {
+                                Text(
+                                    text = category,
+                                    style =
+                                        TextStyle(
+                                            fontSize = 14.sp,
+//                                        fontWeight = FontWeight.Bold,
+                                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                        ),
                                 )
+                            },
+                            shape = RoundedCornerShape(20.dp),
+                            colors =
+                                FilterChipDefaults.filterChipColors(
+                                    containerColor = Color(0xFFF2F4F6),
+                                    labelColor = Color(0xFF6B7684),
+                                    selectedContainerColor = Color(0xFFE8F3FF),
+                                    selectedLabelColor = Color(0xFF3182F6),
+                                ),
+                            border = null,
+                            elevation = FilterChipDefaults.filterChipElevation(0.dp),
+                        )
+                    }
+                }
 
+                Spacer(modifier = Modifier.height(12.dp))
+
+                CommonTextField(
+                    title = "제목",
+                    value = viewState.communityWriteTitleField,
+                    placeholder = "제목을 입력해주세요.",
+                    onValueChange = { viewModel.onTitleFieldChanged(it) },
+                )
+
+                CommonTextField(
+                    title = "본문",
+                    value = viewState.communityWriteContentField,
+                    placeholder = "본문을 입력해주세요.",
+                    singleLine = false,
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .height(300.dp),
+                    onValueChange = { viewModel.onContentFieldChanged(it) },
+                )
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                Box(
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(Color(0xFFF9FAFB))
+                            .padding(16.dp),
+                ) {
+                    Column {
+                        Text(
+                            text = "첨부된 사진 ${viewState.selectedImages.size}/3",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF8B95A1),
+                            modifier = Modifier.padding(bottom = 12.dp),
+                        )
+                        LazyRow(
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            item {
+                                CommonImageButton(
+                                    onClick = {
+                                        if (viewState.selectedImages.size < 3) {
+                                            galleryLauncher.launch("image/*")
+                                        } else {
+                                            viewModel.onShowDialog()
+                                        }
+                                    },
+                                )
+                            }
+
+                            items(viewState.selectedImages) { imageUri ->
                                 Box(
                                     modifier =
                                         Modifier
-                                            .align(Alignment.TopEnd)
-                                            .offset(x = 4.dp, y = (-4).dp)
-                                            .size(18.dp)
-                                            .background(Color(0xFF4E5968), CircleShape)
-                                            .clickable { viewModel.removeSelectedImage(imageUri) },
-                                    contentAlignment = Alignment.Center,
+                                            .size(56.dp)
+                                            .clickable { viewModel.onImagePreview(imageUri) }
+                                            .background(Color.White, RoundedCornerShape(12.dp)),
                                 ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Close,
-                                        contentDescription = "삭제",
-                                        tint = Color.White,
-                                        modifier = Modifier.size(10.dp),
+                                    AsyncImage(
+                                        model = imageUri,
+                                        contentDescription = null,
+                                        modifier =
+                                            Modifier
+                                                .fillMaxSize()
+                                                .clip(RoundedCornerShape(12.dp)),
+                                        contentScale = ContentScale.Crop,
                                     )
+
+                                    Box(
+                                        modifier =
+                                            Modifier
+                                                .align(Alignment.TopEnd)
+                                                .offset(x = 4.dp, y = (-4).dp)
+                                                .size(18.dp)
+                                                .background(Color(0xFF4E5968), CircleShape)
+                                                .clickable { viewModel.removeSelectedImage(imageUri) },
+                                        contentAlignment = Alignment.Center,
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Close,
+                                            contentDescription = "삭제",
+                                            tint = Color.White,
+                                            modifier = Modifier.size(10.dp),
+                                        )
+                                    }
                                 }
                             }
                         }
                     }
                 }
+                Spacer(modifier = Modifier.height(40.dp))
             }
-            Spacer(modifier = Modifier.height(40.dp))
+        }
+        if (viewState.previewImage?.isNotEmpty() ?: false) {
+            CommonPreview(
+                previewImage = viewState.previewImage ?: "",
+                clickable = { viewModel.onImagePreviewDismissed() },
+            )
+        }
+        if (viewState.isShowDialog) {
+            CommonDialog(
+                title = "사진 추가 제한",
+                desc = "사진은 최대 3장까지만 등록할 수 있습니다.",
+                icon = Icons.Default.Close,
+                onConfirm = { viewModel.closeShowDialog() },
+            )
+        }
+        if (viewState.isWriteLoading) {
+            CommonIndicator(title = "작성 중입니다...")
         }
     }
 }

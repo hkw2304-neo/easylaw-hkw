@@ -18,7 +18,9 @@ import com.google.firebase.messaging.FirebaseMessaging
 import dagger.hilt.android.lifecycle.HiltViewModel
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.gotrue.auth
+import io.github.jan.supabase.gotrue.providers.Google
 import io.github.jan.supabase.gotrue.providers.builtin.Email
+import io.github.jan.supabase.gotrue.providers.builtin.IDToken
 import io.github.jan.supabase.postgrest.from
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -111,6 +113,7 @@ class LoginViewModel
                                     filter { eq("id", userId) }
                                 }.decodeSingle<UserInfo>()
 
+                        // supabase 로그인
                         userSession.setLoginInfo(userInfo)
                         Log.d("userInfo", userSession.getUserState().toString())
 
@@ -143,11 +146,29 @@ class LoginViewModel
                     val authCredential =
                         GoogleAuthProvider.getCredential(googleCredential.idToken, null)
                     try {
-                        // 1. Firebase 로그인
                         val authResult = Firebase.auth.signInWithCredential(authCredential).await()
                         val user = authResult.user
 
                         if (user != null) {
+//                            val idToken = user.getIdToken(true).await().token
+                            val googleCredential = googleAuthClient.signIn()
+//                            Log.d("TOKEN : ", idToken.toString())
+                            if (googleCredential != null) {
+                                val googleIdToken = googleCredential.idToken // <-- 이것이 Supabase가 원하는 '진짜' 구글 토큰입니다.
+
+                                try {
+                                    supabase.auth.signInWith(IDToken) {
+                                        idToken = googleIdToken // user.getIdToken() 대신 이걸 넣으세요!
+                                        provider = Google
+                                    }
+                                    Log.d("Supabase Auth", "성공!")
+                                } catch (e: Exception) {
+                                    // 여기서 에러가 나면 'Bad ID token'일 확률이 높음 (대시보드 설정 확인 필요)
+                                    Log.e("Supabase Auth Error", "세션 생성 실패: ${e.message}")
+                                    throw e
+                                }
+                            }
+
                             val userEmail = user.email ?: ""
                             val userName = user.displayName ?: ""
                             val userId = user?.uid
@@ -200,7 +221,7 @@ class LoginViewModel
                             onSuccess()
                         }
                     } catch (e: Exception) {
-                        Log.d("google auth error", e.toString())
+                        Log.e("google auth error", e.toString())
                     } finally {
                         _loginViewState.update { it.copy(isLoginLoading = false) }
                     }

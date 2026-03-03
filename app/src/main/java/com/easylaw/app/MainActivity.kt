@@ -4,47 +4,50 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material3.DrawerValue
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
-import androidx.compose.material3.NavigationDrawerItem
-import androidx.compose.material3.NavigationDrawerItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberDrawerState
-import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import com.easylaw.app.domain.model.UserInfo
 import com.easylaw.app.domain.model.UserSession
 import com.easylaw.app.navigation.AppRoute
 import com.easylaw.app.navigation.NavRoute
 import com.easylaw.app.navigation.NavRoute.bottomItems
+import com.easylaw.app.ui.components.EasylawSideBar
 import com.easylaw.app.ui.theme.EasyLawTheme
+import com.easylaw.app.ui.theme.TossBlue
+import com.easylaw.app.ui.theme.TossGrey100
+import com.easylaw.app.ui.theme.TossGrey400
+import com.easylaw.app.ui.theme.TossGrey600
+import com.easylaw.app.ui.theme.TossWhite
 import com.easylaw.app.util.PreferenceManager
 import dagger.hilt.android.AndroidEntryPoint
+import io.github.jan.supabase.SupabaseClient
+import io.github.jan.supabase.gotrue.auth
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -59,6 +62,8 @@ class MainActivity : ComponentActivity() {
     @Inject
     lateinit var userSession: UserSession
 
+    @Inject lateinit var supabase: SupabaseClient
+
     @Inject
     lateinit var preferenceManager: PreferenceManager
 
@@ -69,10 +74,13 @@ class MainActivity : ComponentActivity() {
         // 앱 시작 시 로컬 저장소에서 유저 정보 불러오기
         lifecycleScope.launch {
             val savedUser = preferenceManager.userData.firstOrNull()
-            if (savedUser != null) {
+            val currentSupabaseSession = supabase.auth.currentSessionOrNull()
+            if (currentSupabaseSession != null && savedUser != null) {
                 userSession.setLoginInfo(savedUser)
             } else {
                 userSession.sessionClear()
+                preferenceManager.sessionClear()
+                supabase.auth.signOut()
             }
         }
 
@@ -88,7 +96,7 @@ class MainActivity : ComponentActivity() {
                 val userInfo by userSession.userInfo.collectAsState()
                 // 유저 상태랑 별개로 로딩변수만 따로 감지
                 val isInitialized by userSession.isInitialized.collectAsState()
-
+//
                 val hideBarsRoutes = listOf(NavRoute.ONBOARDING, NavRoute.LOGIN, NavRoute.SIGN_UP, NavRoute.COMMUNITY_WRITE)
 
                 val startRoute = if (userInfo.id.isNotEmpty()) NavRoute.COMMUNITY else NavRoute.ONBOARDING
@@ -105,6 +113,7 @@ class MainActivity : ComponentActivity() {
                     drawerContent = {
                         EasylawSideBar(
                             userInfo = userInfo,
+                            onLanguageClick = {},
                             onLogoutClick = {
                                 scope.launch {
                                     userSession.sessionClear()
@@ -129,29 +138,59 @@ class MainActivity : ComponentActivity() {
                         bottomBar = {
                             if (currentRoute !in hideBarsRoutes) {
                                 NavigationBar(
-                                    containerColor = NAV_BAR_COLOR,
-                                    tonalElevation = 8.dp,
+                                    containerColor = TossWhite,
+                                    tonalElevation = 0.dp,
+                                    windowInsets = WindowInsets.navigationBars,
+                                    modifier =
+                                        Modifier
+                                            .height(120.dp)
+                                            .drawBehind {
+                                                drawLine(
+                                                    color = TossGrey100,
+                                                    start = Offset(0f, 0f),
+                                                    end = Offset(size.width, 0f),
+                                                    strokeWidth = 1.dp.toPx(),
+                                                )
+                                            },
                                 ) {
                                     bottomItems.forEach { item ->
                                         val isSelected = currentRoute == item.route
+
                                         NavigationBarItem(
                                             selected = isSelected,
-                                            label = { Text(text = item.title) },
-                                            icon = { Icon(imageVector = item.icon, contentDescription = item.title) },
+                                            label = {
+                                                Text(
+                                                    text = item.title,
+                                                    fontSize = 11.sp,
+                                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                                    letterSpacing = (-0.3).sp, // 토스 특유의 촘촘한 자간 느낌
+                                                )
+                                            },
+                                            icon = {
+                                                Icon(
+                                                    imageVector = item.icon,
+                                                    contentDescription = item.title,
+                                                    modifier = Modifier.size(24.dp),
+                                                )
+                                            },
                                             colors =
                                                 NavigationBarItemDefaults.colors(
-                                                    selectedIconColor = SELECTED_ICON_COLOR,
-                                                    selectedTextColor = SELECTED_ICON_COLOR,
-                                                    unselectedIconColor = UNSELECTED_ICON_COLOR,
-                                                    unselectedTextColor = UNSELECTED_ICON_COLOR,
+                                                    indicatorColor = Color.Transparent,
+                                                    selectedIconColor = TossBlue,
+                                                    selectedTextColor = TossBlue,
+                                                    unselectedIconColor = TossGrey400,
+                                                    unselectedTextColor = TossGrey600,
                                                 ),
                                             onClick = {
                                                 if (currentRoute != item.route) {
                                                     navController.navigate(item.route) {
+                                                        // 최상위 시작 목적지로 팝업하여 스택 쌓임 방지
                                                         popUpTo(navController.graph.findStartDestination().id) {
                                                             saveState = true
                                                         }
+                                                        // 동일 화면 중복 생성 방지
                                                         launchSingleTop = true
+                                                        // 상태 복구 (이전 입력값 등)
                                                         restoreState = true
                                                     }
                                                 }
@@ -176,45 +215,45 @@ class MainActivity : ComponentActivity() {
 
 private val DRAWER_DIVIDER_COLOR = Color(0xFFEEEEEE)
 
-@Composable
-fun EasylawSideBar(
-    userInfo: UserInfo,
-    onLogoutClick: () -> Unit,
-) {
-    ModalDrawerSheet(
-        drawerContainerColor = DRAWER_BACKGROUND_COLOR,
-        modifier = Modifier.width(280.dp),
-    ) {
-        Column(
-            modifier =
-                Modifier
-                    .fillMaxHeight()
-                    .padding(20.dp),
-        ) {
-            // 상단 유저 정보 영역
-            Text(
-                text = if (userInfo.id.isNotEmpty()) "${userInfo.name}님 환영합니다" else "로그인이 필요합니다",
-                style = MaterialTheme.typography.titleMedium,
-                color = Color.Black,
-            )
-            Text(
-                text = userInfo.email,
-                style = MaterialTheme.typography.bodySmall,
-                color = Color.Gray,
-            )
-
-            Spacer(modifier = Modifier.height(24.dp))
-            HorizontalDivider(thickness = 1.dp, color = DRAWER_DIVIDER_COLOR)
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // 메뉴 리스트
-            NavigationDrawerItem(
-                label = { Text(text = "로그아웃", color = Color.Red) },
-                selected = false,
-                onClick = onLogoutClick,
-                icon = { Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = null, tint = Color.Red) },
-                colors = NavigationDrawerItemDefaults.colors(unselectedContainerColor = Color.Transparent),
-            )
-        }
-    }
-}
+// @Composable
+// fun EasylawSideBar(
+//    userInfo: UserInfo,
+//    onLogoutClick: () -> Unit,
+// ) {
+//    ModalDrawerSheet(
+//        drawerContainerColor = DRAWER_BACKGROUND_COLOR,
+//        modifier = Modifier.width(280.dp),
+//    ) {
+//        Column(
+//            modifier =
+//                Modifier
+//                    .fillMaxHeight()
+//                    .padding(20.dp),
+//        ) {
+//            // 상단 유저 정보 영역
+//            Text(
+//                text = if (userInfo.id.isNotEmpty()) "${userInfo.name}님 환영합니다" else "로그인이 필요합니다",
+//                style = MaterialTheme.typography.titleMedium,
+//                color = Color.Black,
+//            )
+//            Text(
+//                text = userInfo.email,
+//                style = MaterialTheme.typography.bodySmall,
+//                color = Color.Gray,
+//            )
+//
+//            Spacer(modifier = Modifier.height(24.dp))
+//            HorizontalDivider(thickness = 1.dp, color = DRAWER_DIVIDER_COLOR)
+//            Spacer(modifier = Modifier.height(12.dp))
+//
+//            // 메뉴 리스트
+//            NavigationDrawerItem(
+//                label = { Text(text = "로그아웃", color = Color.Red) },
+//                selected = false,
+//                onClick = onLogoutClick,
+//                icon = { Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = null, tint = Color.Red) },
+//                colors = NavigationDrawerItemDefaults.colors(unselectedContainerColor = Color.Transparent),
+//            )
+//        }
+//    }
+// }

@@ -174,6 +174,9 @@ fun AppRoute(
             CommunityWriteView(
                 modifier = modifier,
                 viewModel = communityWriteViewModel,
+                goBack = {
+                    navController.popBackStack()
+                },
             )
         }
         // 자가진단 화면
