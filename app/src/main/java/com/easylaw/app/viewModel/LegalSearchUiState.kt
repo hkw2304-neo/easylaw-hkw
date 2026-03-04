@@ -23,9 +23,11 @@ data class LegalSearchUiState(
     val details: String = "",
     val isSituationError: Boolean = false,
     val showResults: Boolean = false,
+    val isLoading: Boolean = false, // 판례 목록 API 로딩
     val isLoadingGemini: Boolean = false,
     val extractedKeyword: String = "",
     val totalSearchCount: Int = 0,
+    val listFilterText: String = "",
     // 본문
     val showDetailDialog: Boolean = false, // 상세 팝업 노출 여부
     val detailViewMode: DetailViewMode = DetailViewMode.ORIGINAL, // 원문 or 요약 모드

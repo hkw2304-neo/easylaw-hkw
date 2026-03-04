@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -27,6 +28,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -40,6 +42,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
@@ -64,9 +67,6 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.paging.LoadState
-import androidx.paging.compose.LazyPagingItems
-import androidx.paging.compose.collectAsLazyPagingItems
 import com.easylaw.app.domain.model.Precedent
 import com.easylaw.app.util.debouncedClickable
 import com.easylaw.app.viewmodel.CourtTypeOption
@@ -77,7 +77,10 @@ import com.easylaw.app.viewmodel.LegalSearchViewModel
 @Composable
 fun LegalSearchRoute(viewModel: LegalSearchViewModel = hiltViewModel()) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val searchResults = viewModel.searchResults.collectAsLazyPagingItems<Precedent>()
+//    val searchResults = viewModel.searchResults.collectAsLazyPagingItems()
+//    val searchResults by viewModel.searchResults.collectAsStateWithLifecycle()
+    val displayResults by viewModel.displayResults.collectAsStateWithLifecycle()
+    val filterKeyword by viewModel.filterKeyword.collectAsStateWithLifecycle()
 
     Box(modifier = Modifier.fillMaxSize()) {
         SituationDiagnosisScreen(
@@ -91,7 +94,10 @@ fun LegalSearchRoute(viewModel: LegalSearchViewModel = hiltViewModel()) {
         if (uiState.showResults) {
             PrecedentResultDialog(
                 uiState = uiState,
-                pagingItems = searchResults,
+//                pagingItems = searchResults,
+                precedents = displayResults,
+                filterKeyword = filterKeyword,
+                onFilterKeywordChange = viewModel::updateListFilterText,
                 onPrecedentClick = viewModel::onPrecedentClick,
                 onDismiss = viewModel::closeResults,
             )
@@ -229,7 +235,7 @@ fun CourtTypeSpinner(
 
     ExposedDropdownMenuBox(
         expanded = expanded,
-        onExpandedChange = { newValue -> expanded = newValue },
+        onExpandedChange = { expanded = !expanded },
     ) {
         OutlinedTextField(
             value = selectedOption.displayName,
@@ -247,22 +253,20 @@ fun CourtTypeSpinner(
                     unfocusedBorderColor = Color(0xFFE0E0E0),
                 ),
         )
-        ExposedDropdownMenuBox(
+        ExposedDropdownMenu(
             expanded = expanded,
-            onExpandedChange = {},
-            modifier = Modifier.exposedDropdownSize(),
+            onDismissRequest = { expanded = false },
+            modifier = Modifier.background(Color.White),
         ) {
-            LazyColumn(modifier = Modifier.background(Color.White)) {
-                items(CourtTypeOption.entries.size) { index ->
-                    val option = CourtTypeOption.entries[index]
-                    DropdownMenuItem(
-                        text = { Text(text = option.displayName, color = Color.Black) },
-                        onClick = {
-                            onOptionSelected(option)
-                            expanded = false
-                        },
-                    )
-                }
+            // Enum 클래스에 정의된 모든 옵션을 리스트로 뿌려줍니다.
+            CourtTypeOption.entries.forEach { option ->
+                DropdownMenuItem(
+                    text = { Text(text = option.displayName, color = Color.Black) },
+                    onClick = {
+                        onOptionSelected(option)
+                        expanded = false
+                    },
+                )
             }
         }
     }
@@ -305,7 +309,10 @@ fun CustomTextField(
 @Composable
 fun PrecedentResultDialog(
     uiState: LegalSearchUiState,
-    pagingItems: LazyPagingItems<Precedent>,
+//    pagingItems: LazyPagingItems<Precedent>,
+    precedents: List<Precedent>,
+    filterKeyword: String,
+    onFilterKeywordChange: (String) -> Unit,
     onPrecedentClick: (Precedent) -> Unit,
     onDismiss: () -> Unit,
 ) {
@@ -340,14 +347,25 @@ fun PrecedentResultDialog(
                         )
                         Spacer(modifier = Modifier.height(4.dp))
 
-                        if (pagingItems.loadState.refresh is LoadState.Loading) {
-                            Text(text = "법령 데이터를 불러오는 중입니다...", fontSize = 14.sp, color = Color.Gray)
+//                        val itemCount = pagingItems.itemCount
+
+//                        if (pagingItems.loadState.refresh is LoadState.Loading) {
+
+                        if (precedents.isEmpty() && uiState.totalSearchCount == 0) {
+                            Text(text = "검색된 항목이 없습니다.", fontSize = 14.sp, color = Color.Gray)
                         } else {
-                            Text(
-                                text = "총 ${uiState.totalSearchCount}건이 검색되었습니다.",
-                                fontSize = 14.sp,
-                                color = Color.Gray,
-                            )
+//                            Text(
+//                                text = "총 ${uiState.totalSearchCount}건이 검색되었습니다.",
+//                                fontSize = 14.sp,
+//                                color = Color.Gray,
+//                            )
+                            val resultText =
+                                if (filterKeyword.isNotBlank()) {
+                                    "검색 결과 중 ${precedents.size}건 필터링 됨"
+                                } else {
+                                    "총 ${uiState.totalSearchCount}건이 검색되었습니다."
+                                }
+                            Text(text = resultText, fontSize = 14.sp, color = Color.Gray)
                         }
                     }
                     IconButton(onClick = onDismiss) {
@@ -359,6 +377,33 @@ fun PrecedentResultDialog(
                     }
                 }
 
+                if (uiState.isLoading) {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator(color = Color(0xFF6B9DE8))
+                    }
+                } else {
+                    OutlinedTextField(
+                        value = uiState.listFilterText,
+                        onValueChange = onFilterKeywordChange,
+                        placeholder = { Text("결과 내 재검색 (예: 항소, 상고)") },
+                        leadingIcon = { Icon(Icons.Default.Search, contentDescription = "재검색") },
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 24.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        singleLine = true,
+                        colors =
+                            OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = Color(0xFF1967D2),
+                                unfocusedBorderColor = Color(0xFFE0E0E0),
+                                focusedContainerColor = Color.White,
+                                unfocusedContainerColor = Color(0xFFFAFAFA),
+                            ),
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
                 HorizontalDivider(color = Color(0xFFEEEEEE))
 
                 // 검색 결과 리스트
@@ -370,23 +415,40 @@ fun PrecedentResultDialog(
                     contentPadding = PaddingValues(vertical = 16.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp),
                 ) {
-                    items(count = pagingItems.itemCount) { index ->
-                        val precedent = pagingItems[index]
-                        if (precedent != null) {
-                            PrecedentCard(precedent) { onPrecedentClick(precedent) }
-                        }
+//                    items(count = pagingItems.itemCount) { index ->
+//                        val precedent = pagingItems[index]
+//                        if (precedent != null) {
+//                            PrecedentCard(precedent) { onPrecedentClick(precedent) }
+//                        }
+//                    }
+                    items(precedents) { precedent ->
+                        PrecedentCard(precedent) { onPrecedentClick(precedent) }
                     }
 
-                    if (pagingItems.loadState.append is LoadState.Loading) {
+//                    if (pagingItems.loadState.append is LoadState.Loading) {
+//                        item {
+//                            Box(
+//                                modifier =
+//                                    Modifier
+//                                        .fillMaxWidth()
+//                                        .padding(16.dp),
+//                                contentAlignment = Alignment.Center,
+//                            ) {
+//                                CircularProgressIndicator(modifier = Modifier.size(24.dp), color = Color(0xFF6B9DE8))
+//                            }
+//                        }
+//                    }
+
+                    if (precedents.isEmpty() && uiState.listFilterText.isNotBlank()) {
                         item {
                             Box(
                                 modifier =
                                     Modifier
                                         .fillMaxWidth()
-                                        .padding(16.dp),
+                                        .padding(32.dp),
                                 contentAlignment = Alignment.Center,
                             ) {
-                                CircularProgressIndicator(modifier = Modifier.size(24.dp), color = Color(0xFF6B9DE8))
+                                Text(text = "필터링된 결과가 없습니다.", color = Color.Gray)
                             }
                         }
                     }
@@ -456,9 +518,40 @@ fun PrecedentCard(
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Spacer(modifier = Modifier.width(4.dp))
-            Text(text = "선고일자: ${precedent.date}", color = Color.Gray, fontSize = 14.sp)
+//        Row(verticalAlignment = Alignment.CenterVertically) {
+//            Text(
+//                text = if (precedent.judgmentType.isNotEmpty()) {
+//                    "⚖️"
+//                } else "", fontSize = 14.sp
+//            )
+//            Spacer(modifier = Modifier.width(4.dp))
+//            Text(
+//                text = precedent.judgmentType, color = Color.Gray, fontSize = 14.sp, modifier = Modifier.weight(1f)
+//            )
+//
+//            Spacer(modifier = Modifier.width(4.dp))
+//            Text(text = "선고일자: ${precedent.date}", color = Color.Gray, fontSize = 14.sp)
+//        }
+
+        Column(modifier = Modifier.fillMaxWidth()) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                if (precedent.judgmentType.isNotEmpty()) {
+                    Text(text = "⚖️", fontSize = 14.sp)
+                    Spacer(modifier = Modifier.width(4.dp))
+                }
+                Text(
+                    text = precedent.judgmentType,
+                    color = Color.Gray,
+                    fontSize = 14.sp,
+                    modifier = Modifier.weight(1f),
+                )
+            }
+            Text(
+                text = "선고일자: ${precedent.date}",
+                color = Color.Gray,
+                fontSize = 14.sp,
+                modifier = Modifier.fillMaxWidth(),
+            )
         }
     }
 }
