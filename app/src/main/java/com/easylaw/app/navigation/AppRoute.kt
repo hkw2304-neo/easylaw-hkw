@@ -120,7 +120,10 @@ fun AppRoute(
                 },
                 goToMainView = {
                     navController.navigate(NavRoute.COMMUNITY) {
-                        popUpTo(NavRoute.LOGIN) { inclusive = true }
+                        popUpTo(navController.graph.id) {
+                            inclusive = true
+                        }
+                        launchSingleTop = true
                     }
                 },
             )

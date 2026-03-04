@@ -140,92 +140,57 @@ class LoginViewModel
             viewModelScope.launch {
                 _loginViewState.update { it.copy(isLoginLoading = true) }
 
-                val googleCredential = googleAuthClient.signIn()
+                try {
+                    val googleCredential = googleAuthClient.signIn()
 
-                if (googleCredential != null) {
-                    val authCredential =
-                        GoogleAuthProvider.getCredential(googleCredential.idToken, null)
-                    try {
-                        val authResult = Firebase.auth.signInWithCredential(authCredential).await()
-                        val user = authResult.user
-
-                        if (user != null) {
-//                            val idToken = user.getIdToken(true).await().token
-                            val googleCredential = googleAuthClient.signIn()
-//                            Log.d("TOKEN : ", idToken.toString())
-                            if (googleCredential != null) {
-                                val googleIdToken = googleCredential.idToken // <-- 이것이 Supabase가 원하는 '진짜' 구글 토큰입니다.
-
-                                try {
-                                    supabase.auth.signInWith(IDToken) {
-                                        idToken = googleIdToken // user.getIdToken() 대신 이걸 넣으세요!
-                                        provider = Google
-                                    }
-                                    Log.d("Supabase Auth", "성공!")
-                                } catch (e: Exception) {
-                                    // 여기서 에러가 나면 'Bad ID token'일 확률이 높음 (대시보드 설정 확인 필요)
-                                    Log.e("Supabase Auth Error", "세션 생성 실패: ${e.message}")
-                                    throw e
-                                }
-                            }
-
-                            val userEmail = user.email ?: ""
-                            val userName = user.displayName ?: ""
-                            val userId = user?.uid
-                            val userRole = userSession.getUserRole()
-
-                            val fcmToken =
-                                try {
-                                    FirebaseMessaging.getInstance().token.await()
-                                } catch (e: Exception) {
-                                    Log.e("FCM", "토큰 가져오기 실패", e)
-                                    null
-                                }
-
-                            try {
-                                val userData =
-                                    UserRequest(
-                                        id = userId,
-                                        name = userName,
-                                        email = userEmail,
-                                        user_role = userRole,
-                                        fcmToken = fcmToken,
-                                    )
-                                val userInfo =
-                                    supabase
-                                        .from("users")
-                                        .upsert(value = userData, onConflict = "email") {
-                                            select()
-                                        }.decodeSingle<UserInfo>()
-
-                                userSession.setLoginInfo(userInfo)
-
-//                                supabase.from("users").upsert(
-//                                    value = userData,
-//                                    onConflict = "email",
-//                                )
-                                Log.d("userInfo", userSession.getUserState().toString())
-                                Log.d("Supabase success", "유저 정보 및 FCM 토큰 저장 성공")
-                            } catch (e: Exception) {
-                                Log.e("Supabase .error", "DB 동기화 에러: ${e.message}")
-                            }
-
-//                            userSession.setLoginInfo(
-//                                name = userName,
-//                                email = userEmail,
-//                            )
-//                            sessionState.value.userInfo?.name
-//                            val info = sessionState.value
-//                            Log.d("login_user", "이름: ${info.userInfo?.name}, 이메일: ${info.userInfo?.email}")
-
-                            onSuccess()
-                        }
-                    } catch (e: Exception) {
-                        Log.e("google auth error", e.toString())
-                    } finally {
+                    if (googleCredential == null) {
                         _loginViewState.update { it.copy(isLoginLoading = false) }
+                        return@launch
                     }
-                } else {
+
+                    val authCredential = GoogleAuthProvider.getCredential(googleCredential.idToken, null)
+                    val authResult = Firebase.auth.signInWithCredential(authCredential).await()
+                    val firebaseUser = authResult.user ?: throw Exception("Firebase 유저 정보가 없습니다.")
+
+                    try {
+                        supabase.auth.signInWith(IDToken) {
+                            idToken = googleCredential.idToken
+                            provider = Google
+                        }
+                        Log.d("Supabase Auth", "성공!")
+                    } catch (e: Exception) {
+                        Log.e("Supabase Auth Error", "세션 생성 실패: ${e.message}")
+                    }
+
+                    val fcmToken =
+                        try {
+                            FirebaseMessaging.getInstance().token.await()
+                        } catch (e: Exception) {
+                            Log.e("FCM", "토큰 가져오기 실패", e)
+                            null
+                        }
+
+                    val userData =
+                        UserRequest(
+                            id = firebaseUser.uid,
+                            name = firebaseUser.displayName ?: "이름 없음",
+                            email = firebaseUser.email ?: "",
+                            user_role = userSession.getUserRole(),
+                            fcmToken = fcmToken,
+                        )
+
+                    val userInfo =
+                        supabase
+                            .from("users")
+                            .upsert(value = userData, onConflict = "email") {
+                                select()
+                            }.decodeSingle<UserInfo>()
+
+                    userSession.setLoginInfo(userInfo)
+                    onSuccess()
+                } catch (e: Exception) {
+                    Log.e("Google Login Error", "로그인 과정 중 에러 발생: ${e.message}")
+                } finally {
                     _loginViewState.update { it.copy(isLoginLoading = false) }
                 }
             }

@@ -3,6 +3,7 @@ package com.easylaw.app.viewmodel
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.easylaw.app.data.models.CategoryModel
 import com.easylaw.app.data.models.CommunityWriteModel
 import com.easylaw.app.domain.model.UserSession
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -17,8 +18,10 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 data class CommunityWriteViewState(
-    val categories: List<String> = listOf("민사", "형사", "노무", "가사", "기타"),
-    val selectedCategory: String = "",
+//    val categories: List<String> = listOf("민사", "형사", "노무", "가사", "기타"),
+//    val selectedCategory: String = "",
+    val categoryList: Map<String, String> = emptyMap(),
+    val selectedCategory: String = "ALL",
     val communityWriteTitleField: String = "",
     val communityWriteContentField: String = "",
     val selectedImages: List<String> = emptyList(),
@@ -43,12 +46,45 @@ class CommunityWriteViewModel
         private val _isWriteSuccess = Channel<Unit>()
         val isWriteSuccess = _isWriteSuccess.receiveAsFlow()
 
-        fun onCategorySelected(category: String) {
-            _commnuityWriteViewState.update { currentState ->
-                val selectedCategory = if (currentState.selectedCategory == category) "" else category
-                currentState.copy(selectedCategory = selectedCategory)
+        init {
+            viewModelScope.launch {
+                loadCategories()
             }
-//        checkValidation()
+        }
+
+        suspend fun loadCategories() {
+            try {
+                _commnuityWriteViewState.update {
+                    it.copy(
+                        isWriteLoading = true,
+                    )
+                }
+
+                val result =
+                    supabase
+                        .from("categories")
+                        .select()
+                        .decodeList<CategoryModel>()
+                val map = result.associate { it.key to it.name }
+
+                _commnuityWriteViewState.update {
+                    it.copy(categoryList = map)
+                }
+            } catch (e: Exception) {
+                Log.e("Category Error", e.toString())
+            } finally {
+                _commnuityWriteViewState.update {
+                    it.copy(
+                        isWriteLoading = false,
+                    )
+                }
+            }
+        }
+
+        fun onCategorySelected(category: String) {
+            _commnuityWriteViewState.update {
+                it.copy(selectedCategory = category)
+            }
         }
 
         fun onTitleFieldChanged(title: String) {
@@ -104,12 +140,7 @@ class CommunityWriteViewModel
 
                     // 현재 뷰에서의 상태(변수)
                     val state = _commnuityWriteViewState.value
-                    val selectedCategory =
-                        if (state.selectedCategory.isNotEmpty()) {
-                            state.selectedCategory
-                        } else {
-                            "기타"
-                        }
+                    val selectedCategory = state.categoryList[state.selectedCategory] ?: "기타"
 
                     val writeModel =
                         CommunityWriteModel(

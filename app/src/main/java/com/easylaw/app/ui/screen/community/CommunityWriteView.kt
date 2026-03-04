@@ -26,8 +26,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -47,6 +45,7 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.easylaw.app.ui.components.CommonButton
 import com.easylaw.app.ui.components.CommonDialog
+import com.easylaw.app.ui.components.CommonFilterCategory
 import com.easylaw.app.ui.components.CommonIndicator
 import com.easylaw.app.ui.components.CommonPreview
 import com.easylaw.app.ui.components.CommonTextField
@@ -143,37 +142,44 @@ fun CommunityWriteView(
                         ),
                     modifier = Modifier.padding(vertical = 12.dp),
                 )
+                CommonFilterCategory(
+                    category = viewState.categoryList,
+                    selectedCategory = viewState.selectedCategory,
+                    onCategorySelected = { it ->
+                        viewModel.onCategorySelected(it)
+                    },
+                )
 
-                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    items(viewState.categories) { category ->
-                        val isSelected = (viewState.selectedCategory == category)
-                        FilterChip(
-                            selected = isSelected,
-                            onClick = { viewModel.onCategorySelected(category) },
-                            label = {
-                                Text(
-                                    text = category,
-                                    style =
-                                        TextStyle(
-                                            fontSize = 14.sp,
-//                                        fontWeight = FontWeight.Bold,
-                                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                                        ),
-                                )
-                            },
-                            shape = RoundedCornerShape(20.dp),
-                            colors =
-                                FilterChipDefaults.filterChipColors(
-                                    containerColor = Color(0xFFF2F4F6),
-                                    labelColor = Color(0xFF6B7684),
-                                    selectedContainerColor = Color(0xFFE8F3FF),
-                                    selectedLabelColor = Color(0xFF3182F6),
-                                ),
-                            border = null,
-                            elevation = FilterChipDefaults.filterChipElevation(0.dp),
-                        )
-                    }
-                }
+//                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+//                    items(viewState.categoryList) { category ->
+//                        val isSelected = (viewState.selectedCategory == category)
+//                        FilterChip(
+//                            selected = isSelected,
+//                            onClick = { viewModel.onCategorySelected(category) },
+//                            label = {
+//                                Text(
+//                                    text = category,
+//                                    style =
+//                                        TextStyle(
+//                                            fontSize = 14.sp,
+// //                                        fontWeight = FontWeight.Bold,
+//                                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+//                                        ),
+//                                )
+//                            },
+//                            shape = RoundedCornerShape(20.dp),
+//                            colors =
+//                                FilterChipDefaults.filterChipColors(
+//                                    containerColor = Color(0xFFF2F4F6),
+//                                    labelColor = Color(0xFF6B7684),
+//                                    selectedContainerColor = Color(0xFFE8F3FF),
+//                                    selectedLabelColor = Color(0xFF3182F6),
+//                                ),
+//                            border = null,
+//                            elevation = FilterChipDefaults.filterChipElevation(0.dp),
+//                        )
+//                    }
+//                }
 
                 Spacer(modifier = Modifier.height(12.dp))
 
@@ -288,7 +294,7 @@ fun CommunityWriteView(
             )
         }
         if (viewState.isWriteLoading) {
-            CommonIndicator(title = "작성 중입니다...")
+            CommonIndicator(title = "잠시만 기다려주세요...")
         }
     }
 }
