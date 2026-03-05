@@ -22,6 +22,9 @@ if (localPropertiesFile.exists()) {
 
 def geminiApiKey = localProperties.getProperty('GEMINI_API_KEY', '')
 def lawApiKey = localProperties.getProperty('LAW_API_KEY', '')
+def geminiApiKeyHkw = localProperties.getProperty('GEMINI_API_KEY_HKW', '')
+def naverClientId = localProperties.getProperty('NAVER_CLIENT_ID', '')
+def naverClientSecret = localProperties.getProperty('NAVER_CLIENT_SECRET', '')
 
 android {
     namespace 'com.easylaw.app'
@@ -40,6 +43,9 @@ android {
         // API 키를 BuildConfig에 주입
         buildConfigField "String", "GEMINI_API_KEY", "\"${geminiApiKey}\""
         buildConfigField "String", "LAW_API_KEY", "\"${lawApiKey}\""
+        buildConfigField "String", "GEMINI_API_KEY_HKW", "\"${geminiApiKeyHkw}\""
+        buildConfigField "String", "NAVER_CLIENT_ID", "\"${naverClientId}\""
+        buildConfigField "String", "NAVER_CLIENT_SECRET", "\"${naverClientSecret}\""
     }
 
     buildTypes {
@@ -202,6 +208,7 @@ dependencies {
     implementation platform('io.github.jan-tennert.supabase:bom:2.5.0')
     implementation 'io.github.jan-tennert.supabase:postgrest-kt'
     implementation 'io.github.jan-tennert.supabase:gotrue-kt'
+    implementation("io.github.jan-tennert.supabase:storage-kt")
 
     // ============ AI ============
     implementation("com.google.ai.client.generativeai:generativeai:0.9.0")

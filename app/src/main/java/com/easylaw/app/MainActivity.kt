@@ -119,7 +119,7 @@ class MainActivity : ComponentActivity() {
 
                     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
                     val scope = rememberCoroutineScope()
-                    val hideBarsRoutes = listOf(NavRoute.ONBOARDING, NavRoute.LOGIN, NavRoute.SIGN_UP, NavRoute.COMMUNITY_WRITE)
+                    val hideBarsRoutes = listOf(NavRoute.ONBOARDING, NavRoute.LOGIN, NavRoute.SIGN_UP, NavRoute.COMMUNITY_WRITE, NavRoute.COMMUNITY_DETAIL)
 
                     ModalNavigationDrawer(
                         drawerState = drawerState,

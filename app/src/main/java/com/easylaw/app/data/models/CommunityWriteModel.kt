@@ -14,4 +14,5 @@ data class CommunityWriteModel(
     val content: String,
     val author: String,
     val images: List<String> = emptyList(),
+    val comments: List<CommentModel> = emptyList(),
 )

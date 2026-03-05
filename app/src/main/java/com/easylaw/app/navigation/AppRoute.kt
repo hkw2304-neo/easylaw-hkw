@@ -1,5 +1,6 @@
 package com.easylaw.app.navigation
 
+import CommunityDetailView
 import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -13,8 +14,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.navArgument
 import com.easylaw.app.ui.screen.LegalSearchRoute
 import com.easylaw.app.ui.screen.Login.LoginView
 import com.easylaw.app.ui.screen.Login.SignView
@@ -22,6 +25,7 @@ import com.easylaw.app.ui.screen.Self.SelfView
 import com.easylaw.app.ui.screen.community.CommunityView
 import com.easylaw.app.ui.screen.community.CommunityWriteView
 import com.easylaw.app.ui.screen.onboarding.OnboardingView
+import com.easylaw.app.viewmodel.CommunityDetailViewModel
 import com.easylaw.app.viewmodel.CommunityViewModel
 import com.easylaw.app.viewmodel.CommunityWriteViewModel
 import com.easylaw.app.viewmodel.LoginViewModel
@@ -44,7 +48,7 @@ object NavRoute {
     const val COMMUNITY = "community"
     const val COMMUNITY_WRITE = "communityWrite"
     const val SELF = "self"
-    const val CAR_CRUSH = "carCrush"
+    const val COMMUNITY_DETAIL = "communityDetail/{id}"
 
     val bottomItems =
         listOf(
@@ -120,6 +124,8 @@ fun AppRoute(
                 },
                 goToMainView = {
                     navController.navigate(NavRoute.COMMUNITY) {
+                        // navController.graph.id
+                        // 이전 스택 전부 지우고 다음 화면 스택만 남긴다.
                         popUpTo(navController.graph.id) {
                             inclusive = true
                         }
@@ -158,6 +164,24 @@ fun AppRoute(
                         // 연타 시 중복 화면 그리기 방지
                         launchSingleTop = true
                     }
+                },
+                gotoDetail = { clickedId ->
+                    navController.navigate("communityDetail/$clickedId") {
+                        launchSingleTop = true
+                    }
+                },
+            )
+        }
+        composable(
+            route = "communityDetail/{id}",
+            arguments = listOf(navArgument("id") { type = NavType.StringType }),
+        ) {
+            val communityDetailViewModel: CommunityDetailViewModel = hiltViewModel()
+            CommunityDetailView(
+                modifier = modifier,
+                viewModel = communityDetailViewModel,
+                goBack = {
+                    navController.popBackStack()
                 },
             )
         }
