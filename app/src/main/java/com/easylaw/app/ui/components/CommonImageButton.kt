@@ -7,19 +7,20 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AddPhotoAlternate
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 
 @Composable
 fun CommonImageButton(
     onClick: () -> Unit,
+    image: ImageVector,
+    desc: String,
 //    currentPhotoCount: Int,
 //    maxPhotoCount: Int = 5
 ) {
@@ -39,8 +40,8 @@ fun CommonImageButton(
             verticalArrangement = Arrangement.Center,
         ) {
             Icon(
-                imageVector = Icons.Default.AddPhotoAlternate,
-                contentDescription = "사진 추가",
+                imageVector = image,
+                contentDescription = desc,
                 tint = Color(0xFF3182F6),
                 modifier = Modifier.size(24.dp), // 아이콘 크기 살짝 키움
             )

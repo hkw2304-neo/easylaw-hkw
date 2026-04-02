@@ -11,6 +11,8 @@ plugins {
 
     id 'com.google.gms.google-services'
     id 'com.google.android.libraries.mapsplatform.secrets-gradle-plugin'
+
+    id 'kotlin-parcelize'
 }
 
 // Load local.properties
@@ -25,11 +27,43 @@ def lawApiKey = localProperties.getProperty('LAW_API_KEY', '')
 def geminiApiKeyHkw = localProperties.getProperty('GEMINI_API_KEY_HKW', '')
 def naverClientId = localProperties.getProperty('NAVER_CLIENT_ID', '')
 def naverClientSecret = localProperties.getProperty('NAVER_CLIENT_SECRET', '')
+def kakaonativekey = localProperties.getProperty('KAKAO_NATIVE_KEY', '')
+def naverMapId = localProperties.getProperty('NAVER_MAP_ID', '')
+def naverMapKey = localProperties.getProperty('NAVER_MAP_KEY', '')
+def kakaoRestApiKey = localProperties.getProperty('KAKAO_REST_API_KEY', '')
+def deeplApiKey = localProperties.getProperty('DEEPL_API_KEY', '')
+
+def releaseStorePwd = localProperties.getProperty('RELEASE_STORE_PASSWORD', '')
+def releaseKeyPwd = localProperties.getProperty('RELEASE_KEY_PASSWORD', '')
+def releaseAlias = localProperties.getProperty('RELEASE_KEY_ALIAS', '')
+
+def googleClientId = localProperties.getProperty("GOOGLE_CLIENT_ID")
+
 
 android {
     namespace 'com.easylaw.app'
     compileSdk 35
 
+    flavorDimensions "version"
+
+    productFlavors {
+        // 개발용 설정
+        dev {
+            dimension "version"
+            // 패키지명 뒤에 .dev를 붙여서 릴리즈 앱과 충돌 방지
+            applicationIdSuffix ".dev"
+            versionNameSuffix "-dev"
+            // 앱 이름을 다르게 설정 (기본 앱 이름과 구분하기 위함)
+            resValue "string", "app_name", "easylaw(dev)"
+        }
+
+        // 배포용 설정
+        prod {
+            dimension "version"
+            // 실제 패키지명 그대로 사용 (com.easylaw.app)
+            resValue "string", "app_name", "easylaw"
+        }
+    }
     defaultConfig {
         applicationId 'com.easylaw.app'
         minSdk 26
@@ -46,6 +80,18 @@ android {
         buildConfigField "String", "GEMINI_API_KEY_HKW", "\"${geminiApiKeyHkw}\""
         buildConfigField "String", "NAVER_CLIENT_ID", "\"${naverClientId}\""
         buildConfigField "String", "NAVER_CLIENT_SECRET", "\"${naverClientSecret}\""
+        buildConfigField "String", "KAKAO_NATIVE_KEY", "\"${kakaonativekey}\""
+//        manifestPlaceholders = [KAKAO_NATIVE_KEY: kakaonativekey]
+        buildConfigField "String", "NAVER_MAP_KEY", "\"${naverMapKey}\""
+        buildConfigField "String", "NAVER_MAP_ID", "\"${naverMapId}\""
+//        buildConfigField "String", "NAVER_SEARCH_KEY", "\"${naverSearchKey}\""
+//        buildConfigField "String", "NAVER_SEARCH_ID", "\"${naverSearchId}\""
+        buildConfigField("String", "KAKAO_REST_API_KEY", "\"${kakaoRestApiKey}\"")
+        manifestPlaceholders = [
+                KAKAO_NATIVE_KEY: kakaonativekey,
+                NAVER_MAP_ID: naverMapId]
+        buildConfigField("String", "DEEPL_API_KEY", "\"${deeplApiKey}\"")
+        buildConfigField("String", "GOOGLE_CLIENT_ID", "\"${googleClientId}\"")
     }
 
     buildTypes {
@@ -74,7 +120,7 @@ android {
         compose true
         aidl false
         renderScript false
-        resValues false
+        resValues true
         shaders false
         buildConfig true
     }
@@ -88,6 +134,26 @@ android {
             excludes += '/META-INF/{AL2.0,LGPL2.1}'
         }
     }
+
+    signingConfigs {
+        create("release") {
+            storeFile = file("easylaw.jks")
+            storePassword = releaseStorePwd
+            keyAlias = releaseAlias
+            keyPassword =  releaseKeyPwd
+        }
+    }
+    buildTypes {
+        release {
+            minifyEnabled true
+            shrinkResources true
+
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+
+            // 서명 설정 적용
+            signingConfig signingConfigs.release
+        }
+    }
 }
 configurations.all {
     resolutionStrategy {
@@ -97,140 +163,113 @@ configurations.all {
 }
 
 
-
 dependencies {
-    // ============ Core Android ============
+    // ============ Core Android & Lifecycle ============
     implementation 'androidx.core:core-ktx:1.12.0'
     implementation 'androidx.appcompat:appcompat:1.6.1'
+    implementation 'androidx.activity:activity-compose:1.9.3'
+    implementation 'androidx.lifecycle:lifecycle-runtime-compose:2.8.6'
+    implementation 'androidx.lifecycle:lifecycle-viewmodel-ktx:2.8.6'
+    implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.8.6'
+    implementation 'androidx.lifecycle:lifecycle-viewmodel-compose:2.8.6'
+    implementation 'androidx.compose.foundation:foundation-layout:1.10.6'
 
-    // ============ Jetpack Compose ============
+    // ============ Jetpack Compose (BOM 관리) ============
     def composeBom = platform('androidx.compose:compose-bom:2024.10.00')
     implementation composeBom
-
     implementation 'androidx.compose.ui:ui'
     implementation 'androidx.compose.ui:ui-graphics'
     implementation 'androidx.compose.ui:ui-tooling-preview'
-    implementation 'androidx.compose.material3:material3'
-    implementation 'androidx.compose.material:material'
+
+    // M3 버전 명시: 1.3.0 이상이어야 'focusedContainerColor' 등이 정상 작동합니다.
+    implementation 'androidx.compose.material3:material3:1.3.0'
     implementation 'androidx.compose.material:material-icons-extended'
 
-    implementation 'androidx.activity:activity-compose:1.8.0'
-    implementation 'androidx.lifecycle:lifecycle-runtime-compose:2.6.2'
-
     // ============ Navigation ============
-    implementation 'androidx.navigation:navigation-compose:2.7.5'
-    implementation 'androidx.navigation:navigation-fragment-ktx:2.7.5'
-    implementation 'androidx.navigation:navigation-ui-ktx:2.7.5'
+    implementation 'androidx.navigation:navigation-compose:2.8.3'
+    implementation 'androidx.navigation:navigation-fragment-ktx:2.8.3'
+    implementation 'androidx.navigation:navigation-ui-ktx:2.8.3'
 
-    // ============ Firebase ============
-    implementation platform('com.google.firebase:firebase-bom:32.7.0')
+    // ============ Firebase (BOM 관리) ============
+    implementation platform('com.google.firebase:firebase-bom:33.5.1') // 최신 안정화 버전
     implementation 'com.google.firebase:firebase-auth'
     implementation 'com.google.firebase:firebase-firestore'
     implementation 'com.google.firebase:firebase-analytics'
-    implementation 'com.google.android.gms:play-services-auth:20.7.0'
-    implementation("com.google.firebase:firebase-messaging-ktx")
-    implementation("com.google.firebase:firebase-auth-ktx")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.7.3")
+    implementation 'com.google.firebase:firebase-messaging-ktx'
+    implementation 'com.google.android.gms:play-services-auth:21.2.0'
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.8.1'
 
-
-
-
-
-    // ============ Jetpack Libraries ============
-    implementation 'androidx.lifecycle:lifecycle-viewmodel-ktx:2.6.2'
-    implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.6.2'
-    implementation 'androidx.lifecycle:lifecycle-viewmodel-compose:2.6.2'
-    implementation 'androidx.datastore:datastore-preferences:1.0.0'
-
-    // ============ Kotlin Coroutines ============
-    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3'
-    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3'
+    // ============ Supabase (BOM 관리) ============
+    implementation platform('io.github.jan-tennert.supabase:bom:2.5.0')
+    implementation 'io.github.jan-tennert.supabase:postgrest-kt'
+    implementation 'io.github.jan-tennert.supabase:gotrue-kt'
+    implementation 'io.github.jan-tennert.supabase:storage-kt'
+    implementation 'io.github.jan-tennert.supabase:functions-kt'
 
     // ============ Dependency Injection (Hilt) ============
     implementation 'com.google.dagger:hilt-android:2.54'
-//    kapt 'com.google.dagger:hilt-compiler:2.54'
     implementation 'androidx.hilt:hilt-navigation-compose:1.2.0'
     ksp "com.google.dagger:hilt-compiler:2.54"
 
-    // ============ Networking ============
-    implementation 'com.squareup.retrofit2:retrofit:2.10.0'
-    implementation 'com.squareup.retrofit2:converter-gson:2.10.0'
-    implementation 'com.squareup.okhttp3:okhttp:4.11.0'
-    implementation 'com.squareup.okhttp3:logging-interceptor:4.11.0'
+    // ============ Networking & JSON ============
+    implementation 'com.squareup.retrofit2:retrofit:2.11.0'
+    implementation 'com.squareup.retrofit2:converter-gson:2.11.0'
+    implementation 'com.squareup.okhttp3:okhttp:4.12.0'
+    implementation 'com.squareup.okhttp3:logging-interceptor:4.12.0'
+    implementation 'com.google.code.gson:gson:2.10.1'
+    implementation 'org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3'
 
-    // ============ Paging3 Parsing ============
+    // ============ Kotlin Coroutines (중복 제거) ============
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1'
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.1'
+
+    // ============ Paging3 ============
     implementation 'androidx.paging:paging-runtime:3.4.1'
     implementation 'androidx.paging:paging-compose:3.4.1'
 
-    // ============ JSON Parsing ============
-    implementation 'com.google.code.gson:gson:2.10.1'
+    // ============ Image Loading & View ============
+    implementation 'io.coil-kt:coil-compose:2.7.0'
+    implementation "com.github.chrisbanes:PhotoView:2.3.0"
 
-    // ============ Image Loading ============
-    implementation 'io.coil-kt:coil-compose:2.5.0'
-    implementation("com.github.chrisbanes:PhotoView:2.3.0")
+    // ============ Maps & Location (Naver) ============
+    implementation 'io.github.fornewid:naver-map-compose:1.5.7'
+    implementation 'com.naver.maps:map-sdk:3.23.1'
+    implementation 'com.google.accompanist:accompanist-permissions:0.34.0'
+    implementation 'com.google.android.gms:play-services-location:21.3.0'
 
-    // ============ Location ============
-    implementation 'com.google.android.gms:play-services-location:21.0.1'
+    // ============ AI & Google Libraries ============
+    implementation 'com.google.ai.client.generativeai:generativeai:0.9.0'
+    implementation 'com.google.android.libraries.identity.googleid:googleid:1.2.0'
 
-    // ============ Maps (Naver) ============
-    // TODO: Naver Map SDK 추가 (별도 설정 필요)
+    // ============ Style & UI ============
+    implementation 'androidx.constraintlayout:constraintlayout-compose:1.0.1'
+    implementation 'androidx.datastore:datastore-preferences:1.1.1'
+    implementation "androidx.biometric:biometric:1.2.0-alpha05"
 
-    // ============ Speech Recognition & TTS ============
-//    implementation 'com.google.android.gms:play-services-mlkit-speech-recognition:16.3.0'
-    // ============ OCR (Google Vision) ============
-    // TODO: Google Vision API 설정 필요
+    // ============ Social SDK (Kakao) ============
+    implementation "com.kakao.sdk:v2-share:2.20.1"
 
-    // ============ Testing - Unit Tests ============
+    // ============ Testing ============
     testImplementation 'junit:junit:4.13.2'
-    testImplementation 'org.mockito:mockito-core:5.6.0'
-    testImplementation 'org.mockito.kotlin:mockito-kotlin:5.1.0'
     testImplementation 'io.mockk:mockk:1.13.8'
-    testImplementation 'org.jetbrains.kotlinx:kotlinx-coroutines-test:1.7.3'
-    testImplementation 'androidx.arch.core:core-testing:2.2.0'
-
-    // ============ Testing - Instrumented Tests ============
+    testImplementation 'org.jetbrains.kotlinx:kotlinx-coroutines-test:1.8.1'
     androidTestImplementation 'androidx.test.ext:junit:1.1.5'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
-    androidTestImplementation 'androidx.compose.ui:ui-test-junit4:1.6.0'
-    androidTestImplementation 'androidx.test:rules:1.5.0'
-    androidTestImplementation 'androidx.test:runner:1.5.2'
+    androidTestImplementation 'androidx.compose.ui:ui-test-junit4'
 
     // ============ Debugging ============
     debugImplementation 'androidx.compose.ui:ui-tooling'
     debugImplementation 'androidx.compose.ui:ui-test-manifest'
 
-
-    // ============ Serializable ============
-    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3'
-//    implementation 'org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.0'
-
-    // ============ supabase ============
-    implementation platform('io.github.jan-tennert.supabase:bom:2.5.0')
-    implementation 'io.github.jan-tennert.supabase:postgrest-kt'
-    implementation 'io.github.jan-tennert.supabase:gotrue-kt'
-    implementation("io.github.jan-tennert.supabase:storage-kt")
-
-    // ============ AI ============
-    implementation("com.google.ai.client.generativeai:generativeai:0.9.0")
-
-    // ============ Style ============
-    implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
-
-    // ============ Google ============
-    implementation 'com.google.android.libraries.identity.googleid:googleid:1.2.0'
-
-    // ============ DataStore ============
-    implementation("androidx.datastore:datastore-preferences:1.1.1")
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3")
-
-
-
-
-
-
+    implementation("androidx.media3:media3-exoplayer:1.3.1")
+    implementation("androidx.media3:media3-ui:1.3.1")
+    implementation("androidx.media3:media3-common:1.3.1")
+    implementation("androidx.compose.runtime:runtime-livedata")
+    
+    // 지문 등록 암호화
+    implementation "androidx.security:security-crypto:1.1.0-alpha06"
 
 }
-
 // Jacoco 설정 (코드 커버리지)
 jacoco {
     toolVersion = '0.8.10'

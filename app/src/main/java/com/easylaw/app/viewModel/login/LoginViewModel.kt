@@ -1,0 +1,386 @@
+package com.easylaw.app.viewModel.login
+
+import android.content.Context
+import android.credentials.GetCredentialException
+import android.os.Build
+import android.util.Log
+import android.util.Patterns
+import androidx.annotation.RequiresApi
+import androidx.credentials.CredentialManager
+import androidx.credentials.GetCredentialRequest
+import androidx.credentials.exceptions.GetCredentialCancellationException
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.easylaw.app.BuildConfig
+import com.easylaw.app.domain.model.UserInfo
+import com.easylaw.app.domain.model.UserSession
+import com.easylaw.app.util.PreferenceManager
+import com.easylaw.app.viewModel.sign.UserRequest
+import com.google.android.libraries.identity.googleid.GetGoogleIdOption
+import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
+import com.google.firebase.Firebase
+import com.google.firebase.auth.GoogleAuthProvider
+import com.google.firebase.auth.auth
+import com.google.firebase.messaging.FirebaseMessaging
+import dagger.hilt.android.lifecycle.HiltViewModel
+import io.github.jan.supabase.SupabaseClient
+import io.github.jan.supabase.gotrue.auth
+import io.github.jan.supabase.gotrue.providers.Google
+import io.github.jan.supabase.gotrue.providers.builtin.Email
+import io.github.jan.supabase.gotrue.providers.builtin.IDToken
+import io.github.jan.supabase.postgrest.from
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
+import javax.inject.Inject
+
+/**
+ * [LoginViewModel]
+ *
+ * 앱의 인증(Authentication) 관리를 담당하며, 일반 로그인과 구글 소셜 로그인 로직을 통합 처리합니다.
+ *
+ * 주요 기능:
+ * 1. 실시간 입력 검증: 이메일 형식 및 비밀번호 길이를 실시간으로 체크하여 UI 상태([LoginViewState])를 업데이트합니다.
+ * 2. Supabase 이메일 인증: Supabase Auth를 통해 로그인을 수행하고, 성공 시 DB([users] 테이블)에서 유저 상세 정보를 가져와 세션에 저장합니다.
+ * 3. 구글 소셜 로그인 (Modern API): 구글 계정 정보를 가져오고, Firebase Auth와 연동하여 인증을 완료합니다.
+ * 4. 데이터 동기화 (Upsert): 소셜 로그인 시 유저 정보를 DB에 저장하거나 업데이트하며, 동시에 FCM 토큰을 갱신하여 서버와 동기화합니다.
+ * 5. 세션 관리: 인증 성공 시 [UserSession]을 통해 앱 전역에서 사용할 유저 상태 정보를 최신화합니다.
+ */
+
+data class LoginViewState(
+    val idInput: String = "",
+    val pwdInput: String = "",
+    val isIdError: Boolean = false,
+    val isPwdError: Boolean = false,
+    val isLoginLoading: Boolean = false,
+    val isLoginError: String = "",
+    val showBiometric: Boolean = false,
+    val isGotoMain: Boolean = false,
+    val waitUserInfo: UserInfo = UserInfo(),
+)
+
+private const val MIN_PASSWORD_LENGTH = 8
+
+// private const val GOOGLE_CLIENT_ID = "607557323201-jeej7j1udj6iilbn3npbrfeuus71b14g.apps.googleusercontent.com"
+private const val GOOGLE_CLIENT_ID = BuildConfig.GOOGLE_CLIENT_ID
+
+@HiltViewModel
+class LoginViewModel
+    @Inject
+    constructor(
+        private val userSession: UserSession,
+        private val supabase: SupabaseClient,
+        private val preferenceManager: PreferenceManager,
+    ) : ViewModel() {
+        private val _loginViewState = MutableStateFlow(LoginViewState())
+        val loginViewState = _loginViewState.asStateFlow()
+
+//    private var _waitUserInfo: UserInfo? = null
+
+        fun loadLoaginData(load: suspend () -> Unit) {
+            viewModelScope.launch {
+                try {
+                    _loginViewState.update {
+                        it.copy(
+                            isLoginLoading = true,
+                        )
+                    }
+
+                    load()
+
+                    _loginViewState.update {
+                        it.copy(
+                            isLoginLoading = false,
+                        )
+                    }
+                } catch (e: Exception) {
+                    Log.e("로그인뷰 error", e.toString())
+                    _loginViewState.update {
+                        it.copy(
+                            isLoginLoading = false,
+                        )
+                    }
+                }
+            }
+        }
+
+        fun onChangedIdTextField(id: String) {
+            // 이메일 정규식 확인
+            val isEmailValid = Patterns.EMAIL_ADDRESS.matcher(id).matches()
+            _loginViewState.update { currentState ->
+                currentState.copy(
+                    idInput = id,
+                    isIdError = id.isNotEmpty() && !isEmailValid,
+                )
+            }
+        }
+
+        fun onChangedPwdTextField(pwd: String) {
+            val isPwdValid = pwd.isNotEmpty() && pwd.length < MIN_PASSWORD_LENGTH
+
+            _loginViewState.update { currentState ->
+                currentState.copy(
+                    pwdInput = pwd,
+                    isPwdError = isPwdValid,
+                )
+            }
+        }
+
+        fun onLoginErrorClose() {
+            _loginViewState.update { it.copy(isLoginError = "") }
+        }
+
+        fun login() {
+            viewModelScope.launch {
+                _loginViewState.update { it.copy(isLoginLoading = true) }
+
+                try {
+                    val email = _loginViewState.value.idInput
+                    val password = _loginViewState.value.pwdInput
+
+                    supabase.auth.signInWith(Email) {
+                        this.email = email
+                        this.password = password
+                    }
+
+                    val userId = supabase.auth.currentUserOrNull()?.id
+
+                    if (userId != null) {
+                        val userInfo =
+                            supabase
+                                .from("users")
+                                .select {
+                                    filter { eq("id", userId) }
+                                }.decodeSingle<UserInfo>()
+
+                        // supabase 로그인
+//                    userSession.setLoginInfo(userInfo)
+                        Log.d("userInfo", userSession.getUserState().toString())
+//                    _waitUserInfo = userInfo
+
+                        _loginViewState.update {
+                            it.copy(
+                                isLoginLoading = false,
+                                showBiometric = true,
+                                waitUserInfo = userInfo,
+                            )
+                        }
+                    } else {
+                        throw Exception("유저 정보를 찾을 수 없습니다.")
+                    }
+                } catch (e: Exception) {
+                    val errorText =
+                        when {
+                            e.toString().contains("Email not confirmed") -> "이메일 인증을 진행해 주세요."
+                            e.toString().contains("Invalid login credentials") -> "아이디 또는 비밀번호가 일치하지 않습니다."
+                            else -> "알 수 없는 에러"
+                        }
+                    Log.e("loginError", "로그인 실패: ${e.message}")
+                    _loginViewState.update {
+                        it.copy(
+                            isLoginLoading = false,
+                            isLoginError = errorText,
+                            showBiometric = false, // 실패 시엔 띄우지 않음
+                        )
+                    }
+                }
+//            finally {
+//                _loginViewState.update {
+//                    it.copy(
+//                        isLoginLoading = false,
+//                        showBiometric = true
+//                    )
+//                }
+//            }
+            }
+        }
+
+        fun registerBiometric() {
+            viewModelScope.launch {
+                val waitUserSession = _loginViewState.value.waitUserInfo
+                val currentId = _loginViewState.value.idInput
+                val currentPw = _loginViewState.value.pwdInput
+
+                if (currentId.isNotEmpty() && currentPw.isNotEmpty()) {
+                    try {
+                        preferenceManager.saveBiometricData(currentId, currentPw)
+
+                        _loginViewState.update {
+                            it.copy(
+                                showBiometric = false,
+//                        isGotoMain = true
+                            )
+                        }
+
+                        Log.d("Biometric", "지문 정보 등록 완료: $currentId")
+                        userSession.setLoginInfo(waitUserSession)
+                    } catch (e: Exception) {
+                        Log.e("Biometric", "지문 등록 중 오류 발생: ${e.message}")
+                        _loginViewState.update { it.copy(isLoginError = "지문 등록에 실패했습니다.") }
+                    }
+                }
+            }
+        }
+
+        fun closeBiometricDialog() {
+            viewModelScope.launch {
+                val waitUserSession = _loginViewState.value.waitUserInfo
+
+                _loginViewState.update {
+                    it.copy(
+                        showBiometric = false,
+                        //                isGotoMain = true
+                    )
+                }
+                userSession.setLoginInfo(waitUserSession)
+            }
+        }
+
+        fun reseGoToMain() {
+            _loginViewState.update {
+                it.copy(
+                    isGotoMain = false,
+                )
+            }
+        }
+
+        @RequiresApi(Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
+        fun logInGoogle(
+            context: Context,
+            onSuccess: () -> Unit,
+        ) {
+            val googleAuthClient = GoogleAuthClient(context)
+            viewModelScope.launch {
+                _loginViewState.update { it.copy(isLoginLoading = true) }
+
+                try {
+                    val googleCredential = googleAuthClient.signIn()
+
+                    if (googleCredential == null) {
+                        _loginViewState.update { it.copy(isLoginLoading = false) }
+                        return@launch
+                    }
+
+                    val authCredential = GoogleAuthProvider.getCredential(googleCredential.idToken, null)
+                    val authResult = Firebase.auth.signInWithCredential(authCredential).await()
+                    val firebaseUser = authResult.user ?: throw Exception("Firebase 유저 정보가 없습니다.")
+
+                    try {
+                        supabase.auth.signInWith(IDToken) {
+                            idToken = googleCredential.idToken
+                            provider = Google
+                        }
+                        Log.d("Supabase Auth", "성공!")
+                    } catch (e: Exception) {
+                        Log.e("Supabase Auth Error", "세션 생성 실패: ${e.message}")
+                    }
+
+                    val fcmToken =
+                        try {
+                            FirebaseMessaging.getInstance().token.await()
+                        } catch (e: Exception) {
+                            Log.e("FCM", "토큰 가져오기 실패", e)
+                            null
+                        }
+
+                    val supabaseUser = supabase.auth.currentUserOrNull()
+                    val supabaseUid = supabaseUser?.id ?: throw Exception("Supabase ID 발급 실패")
+
+                    val userData =
+                        UserRequest(
+                            id = supabaseUid,
+//                            id = firebaseUser.uid,
+                            name = firebaseUser.displayName ?: "이름 없음",
+                            email = firebaseUser.email ?: "",
+                            user_role = userSession.getUserRole(),
+                            fcmToken = fcmToken,
+                        )
+
+                    val userInfo =
+                        supabase
+                            .from("users")
+                            .upsert(value = userData, onConflict = "email") {
+                                select()
+                            }.decodeSingle<UserInfo>()
+
+                    userSession.setLoginInfo(userInfo)
+                    onSuccess()
+                } catch (e: Exception) {
+                    Log.e("Google Login Error", "로그인 과정 중 에러 발생: ${e.message}")
+                } finally {
+                    _loginViewState.update { it.copy(isLoginLoading = false) }
+                }
+            }
+        }
+
+        class GoogleAuthClient(
+            private val context: Context,
+        ) {
+            private val credentialManager = CredentialManager.create(context)
+
+            @RequiresApi(Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
+            suspend fun signIn(): GoogleIdTokenCredential? {
+                try {
+                    // 구글 로그인 옵션 설정
+                    val googleIdOption =
+                        GetGoogleIdOption
+                            .Builder()
+                            .setFilterByAuthorizedAccounts(false)
+                            .setServerClientId(GOOGLE_CLIENT_ID)
+                            .build()
+
+                    val request =
+                        GetCredentialRequest
+                            .Builder()
+                            .addCredentialOption(googleIdOption)
+                            .build()
+
+                    // 팝업 띄우기
+                    val result = credentialManager.getCredential(context, request)
+                    return GoogleIdTokenCredential.createFrom(result.credential.data)
+                } catch (e: GetCredentialException) {
+                    // 💡 구글 로그인 과정(팝업, 인증 등)에서 발생하는 모든 에러
+                    if (e is GetCredentialCancellationException) {
+                        Log.d("GoogleLogin", "사용자가 취소함")
+                    } else {
+                        Log.e("GoogleLogin", "인증 에러 타입: ${e.type}")
+                        Log.e("GoogleLogin", "인증 에러 메시지: ${e.message}")
+                    }
+                    return null
+                } catch (e: Exception) {
+                    // 💡 데이터 변환(createFrom) 오류나 기타 예상치 못한 모든 에러
+                    Log.e("GoogleLogin", "기타 시스템 오류: ${e.message}")
+                    e.printStackTrace()
+                    return null
+                }
+            }
+        }
+    }
+
+@RequiresApi(Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
+private fun handleCredentialException(e: GetCredentialException) {
+    when (e) {
+        // ✅ 사용자가 취소함 (이건 거의 모든 버전에서 동일)
+        is GetCredentialCancellationException -> {
+            Log.d("GoogleLogin", "사용자가 로그인을 취소했습니다.")
+        }
+
+        // ❌ GetCredentialPasswordException 대신
+        // ✅ 아래처럼 type을 확인하거나 일반적인 에러로 처리
+        else -> {
+            val errorType = e.type
+            val errorMessage = e.message
+
+            // 로그캣에서 이 내용을 보고 원인을 파악할 수 있습니다.
+            Log.e("GoogleLogin", "Credential 오류 발생!")
+            Log.e("GoogleLogin", "Type: $errorType")
+            Log.e("GoogleLogin", "Message: $errorMessage")
+
+            // 개발자용 팁:
+            // errorType에 "TYPE_NO_CREDENTIAL"이 포함되면 계정이 없는 것임
+            // errorType에 "10"이 포함되면 SHA-1/Client ID 문제임
+        }
+    }
+}

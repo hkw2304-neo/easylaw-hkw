@@ -14,13 +14,15 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.easylaw.app.data.models.common.CategoryModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CommonFilterCategory(
-    category: Map<String, String>,
+    category: Map<String, CategoryModel>,
     selectedCategory: String,
     onCategorySelected: (String) -> Unit,
+    updateTemplateField: (() -> Unit)? = null,
 ) {
     val categoryKey = category.keys.toList()
     LazyRow(
@@ -28,11 +30,15 @@ fun CommonFilterCategory(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         items(categoryKey) { itemKey ->
-            val categoryName = category[itemKey] ?: ""
+            val categoryName = category[itemKey]?.name ?: ""
+
+//            Log.d("필터값",  "itemKey: ${ itemKey} / categoryName: ${categoryName} / selectedCategory: ${selectedCategory}")
+
             FilterChip(
-                selected = (itemKey == selectedCategory),
+                selected = (itemKey.trim() == selectedCategory.trim()),
                 onClick = {
                     onCategorySelected(itemKey)
+                    updateTemplateField?.invoke()
                 },
                 label = {
                     Text(

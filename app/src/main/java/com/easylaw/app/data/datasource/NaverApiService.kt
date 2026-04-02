@@ -1,6 +1,6 @@
 package com.easylaw.app.data.datasource
 
-import com.easylaw.app.data.models.NaverNewsModel
+import com.easylaw.app.data.models.naver.NaverNewsModel
 import retrofit2.http.GET
 import retrofit2.http.Query
 

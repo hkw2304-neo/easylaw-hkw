@@ -45,6 +45,7 @@ fun CommonTextField(
     errorText: String = "",
     isError: Boolean = false,
     isPassword: Boolean = false,
+    isReadOnly: Boolean = false,
 ) {
     var passwordVisible by remember { mutableStateOf(false) }
 
@@ -85,6 +86,8 @@ fun CommonTextField(
             onValueChange = onValueChange,
             modifier = modifier.fillMaxWidth(),
             isError = isError,
+            readOnly = isReadOnly,
+            enabled = !isReadOnly,
             placeholder = {
                 Text(
                     text = placeholder,

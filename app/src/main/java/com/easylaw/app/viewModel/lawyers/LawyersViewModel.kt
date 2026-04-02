@@ -1,0 +1,115 @@
+package com.easylaw.app.viewModel.lawyers
+
+import android.util.Log
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.easylaw.app.data.models.lawer.LawyersModel
+import com.easylaw.app.data.models.lawer.LaywersReserveReqModel
+import com.easylaw.app.domain.model.UserInfo
+import com.easylaw.app.domain.model.UserSession
+import dagger.hilt.android.lifecycle.HiltViewModel
+import io.github.jan.supabase.SupabaseClient
+import io.github.jan.supabase.postgrest.from
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+import javax.inject.Inject
+
+data class LawyersViewState(
+    val userState: UserInfo =
+        UserInfo(
+            id = "",
+            name = "",
+            email = "",
+            user_role = "",
+        ),
+    val isLoading: Boolean = false,
+    val laywersList: List<LawyersModel> = emptyList(),
+    val reserveList: List<LaywersReserveReqModel> = emptyList(),
+)
+
+@HiltViewModel
+class LawyersViewModel
+    @Inject
+    constructor(
+        private val supabase: SupabaseClient,
+        private val userSession: UserSession,
+    ) : ViewModel() {
+        private val _lawyersViewState = MutableStateFlow(LawyersViewState())
+        val lawyersViewState = _lawyersViewState.asStateFlow()
+
+        init {
+
+            val userState = userSession.getUserState()
+
+//        Log.d("LawyersViewModel init", "변호사 뷰모델 생성")
+            _lawyersViewState.update {
+                it.copy(
+                    userState = userState,
+                )
+            }
+
+            viewModelScope.launch {
+                loadLawyers()
+            }
+//        Log.d("변호사 메뉴 userEmail", _lawyersViewState.value.userState.toString())
+        }
+
+        suspend fun loadLawyers() {
+            try {
+                _lawyersViewState.update {
+                    it.copy(
+                        isLoading = true,
+                    )
+                }
+
+                coroutineScope {
+                    val resLaywers =
+                        async {
+                            supabase.from("lawyers").select().decodeList<LawyersModel>()
+                        }
+                    val resReserve =
+                        async {
+                            supabase
+                                .from("lawyers_reservations")
+                                .select {
+                                    filter {
+                                        eq("user_email", _lawyersViewState.value.userState.email)
+                                    }
+                                }.decodeList<LaywersReserveReqModel>()
+                        }
+
+                    val laywersInfo = resLaywers.await()
+                    val reserveInfo = resReserve.await()
+//                Log.d("reserveInfo", "변호사 로드 성공: $reserveInfo")
+                    _lawyersViewState.update {
+                        it.copy(
+                            laywersList = laywersInfo,
+                            reserveList = reserveInfo,
+                        )
+                    }
+
+                    _lawyersViewState.update {
+                        it.copy(
+                            isLoading = false,
+                        )
+                    }
+                }
+            } catch (e: Exception) {
+                _lawyersViewState.update {
+                    it.copy(
+                        isLoading = false,
+                    )
+                }
+                Log.e("LawyersViewModel", "변호사 로드 실패: ${e.message}")
+            }
+        }
+
+        override fun onCleared() {
+            Log.d("LawyersViewModel Close", "변호사 뷰모델 파괴")
+            super.onCleared()
+        }
+    }
