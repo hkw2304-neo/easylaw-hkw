@@ -3,9 +3,9 @@ package com.easylaw.app.viewModel
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.easylaw.app.data.repository.LawRepository
 import com.easylaw.app.data.repository.PrecedentLabelTranslation
 import com.easylaw.app.data.repository.TranslationRepository
-import com.easylaw.app.data.repository.community.LawRepository
 import com.easylaw.app.domain.model.Precedent
 import com.easylaw.app.domain.usecase.SearchPrecedentsUseCase
 import com.easylaw.app.domain.usecase.SummarizePrecedentUseCase

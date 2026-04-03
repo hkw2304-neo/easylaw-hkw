@@ -1,4 +1,4 @@
-package com.easylaw.app.data.datasource
+package com.easylaw.app.data.api
 
 import com.easylaw.app.data.models.community.CommunityPrecSearchModel
 import retrofit2.http.GET

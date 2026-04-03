@@ -7,6 +7,7 @@ import com.easylaw.app.data.datasource.KakaoLocalApi
 import com.easylaw.app.data.datasource.LawApiService
 import com.easylaw.app.data.repository.DiagnosisRepository
 import com.easylaw.app.data.repository.DiagnosisRepositoryImpl
+import com.easylaw.app.data.repository.LawRepository
 import com.easylaw.app.data.repository.LawRepositoryImpl
 import com.easylaw.app.data.repository.MapRepository
 import com.easylaw.app.data.repository.MapRepositoryImpl
@@ -14,7 +15,6 @@ import com.easylaw.app.data.repository.PrecedentAiRepository
 import com.easylaw.app.data.repository.PrecedentRepositoryImpl
 import com.easylaw.app.data.repository.TranslationRepository
 import com.easylaw.app.data.repository.TranslationRepositoryImpl
-import com.easylaw.app.data.repository.community.LawRepository
 import com.easylaw.app.util.PreferenceManager
 import com.google.ai.client.generativeai.GenerativeModel
 import com.google.gson.GsonBuilder

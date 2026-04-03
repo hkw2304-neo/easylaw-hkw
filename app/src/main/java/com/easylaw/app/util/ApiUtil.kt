@@ -1,8 +1,8 @@
 package com.easylaw.app.common.util
 
 import com.easylaw.app.BuildConfig // BuildConfig 경로 확인 필요
-import com.easylaw.app.data.datasource.CommunityApiService
-import com.easylaw.app.data.datasource.NaverApiService
+import com.easylaw.app.data.api.CommunityApiService
+import com.easylaw.app.data.api.NaverApiService
 import com.google.gson.GsonBuilder
 import com.google.gson.JsonParser
 import dagger.Module

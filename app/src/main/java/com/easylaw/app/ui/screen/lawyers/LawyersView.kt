@@ -22,6 +22,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Assignment
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.PersonSearch
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
@@ -47,6 +48,7 @@ import androidx.navigation.NavHostController
 import com.easylaw.app.data.models.lawer.LaywersReserveReqModel
 import com.easylaw.app.ui.components.CommonIndicator
 import com.easylaw.app.ui.components.CommonScreen
+import com.easylaw.app.ui.screen.lawyers.components.LaywersDialog
 import com.easylaw.app.util.Common
 import com.easylaw.app.viewModel.lawyers.LawyersViewModel
 
@@ -108,14 +110,17 @@ fun LawyersView(
 
                 if (!viewState.isLoading && viewState.reserveList.isNotEmpty()) {
                     item {
-                        ReserveCard(items = viewState.reserveList)
+                        ReserveCard(
+                            items = viewState.reserveList,
+                            showLaywersDialog = { viewModel.toggleLaywersDialog() },
+                        )
                     }
                 } else if (!viewState.isLoading && viewState.reserveList.isEmpty()) {
                     item {
                         Box(
                             modifier =
                                 Modifier
-                                    //                                .fillParentAsState() // LazyColumn 전체 높이를 채우기 위해 사용 (필요시)
+                                    // .fillParentAsState()
                                     .fillMaxWidth()
                                     .padding(vertical = 80.dp),
                             // 상하 여백을 줘서 중앙 느낌 유도
@@ -169,6 +174,22 @@ fun LawyersView(
 
         if (viewState.isLoading) {
             CommonIndicator(title = "잠시만 기다려주세요...")
+        }
+
+        if (viewState.showLaywersDialog) {
+            LaywersDialog(
+                title = "변호사 명단",
+                desc = "어느 분에게 요청을하시겠습니까?",
+                icon = Icons.Default.PersonSearch,
+                onConfirm = { },
+                confirmText = "요청",
+                onDismiss = { viewModel.toggleLaywersDialog() },
+                dismissText = "닫기",
+                lawyersList = viewState.laywersList,
+                onGridCellClick = { currentId -> viewModel.onGridCellClick(currentId) },
+                selectedSet = viewState.selectedIdSet,
+                toggleSelectedTotalChecked = { viewModel.toggleSelectedTotalChecked() },
+            )
         }
     }
 }
@@ -247,7 +268,10 @@ fun SectionOne() {
 }
 
 @Composable
-fun ReserveCard(items: List<LaywersReserveReqModel>) {
+fun ReserveCard(
+    items: List<LaywersReserveReqModel>,
+    showLaywersDialog: () -> Unit,
+) {
     Column(
         modifier =
             Modifier
@@ -285,7 +309,9 @@ fun ReserveCard(items: List<LaywersReserveReqModel>) {
                     Modifier
                         .fillMaxWidth()
                         .padding(vertical = 6.dp)
-                        .clickable { /* 상세 페이지 이동 */ },
+                        .clickable {
+                            showLaywersDialog()
+                        },
                 shape = RoundedCornerShape(16.dp),
                 color = Color.White,
                 shadowElevation = 2.dp,

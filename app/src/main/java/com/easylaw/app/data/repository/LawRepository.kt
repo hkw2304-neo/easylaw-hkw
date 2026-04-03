@@ -1,4 +1,4 @@
-package com.easylaw.app.data.repository.community
+package com.easylaw.app.data.repository
 
 import com.easylaw.app.domain.model.Precedent
 import com.easylaw.app.domain.model.PrecedentDetail

@@ -1,6 +1,6 @@
 package com.easylaw.app.data.repository.community
 
-import com.easylaw.app.data.datasource.NaverApiService
+import com.easylaw.app.data.api.NaverApiService
 import com.easylaw.app.data.models.naver.NaverNewsModel
 import javax.inject.Inject
 

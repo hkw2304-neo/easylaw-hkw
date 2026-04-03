@@ -2,8 +2,6 @@ package com.easylaw.app.data.repository
 
 import android.util.Log
 import com.easylaw.app.data.datasource.LawApiService
-import com.easylaw.app.data.repository.community.LawRepository
-import com.easylaw.app.data.repository.community.PrecedentResult
 import com.easylaw.app.domain.model.Precedent
 import com.easylaw.app.domain.model.PrecedentDetail
 import retrofit2.HttpException

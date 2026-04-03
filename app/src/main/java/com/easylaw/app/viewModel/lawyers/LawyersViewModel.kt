@@ -29,6 +29,11 @@ data class LawyersViewState(
     val isLoading: Boolean = false,
     val laywersList: List<LawyersModel> = emptyList(),
     val reserveList: List<LaywersReserveReqModel> = emptyList(),
+    // 그리드
+    val showLaywersDialog: Boolean = false,
+    // 중복 로직 할 때는 list 말고 set으로 하자
+    val selectedIdSet: Set<LawyersModel> = emptySet(),
+    val selectedTotalChecked: Boolean = false,
 )
 
 @HiltViewModel
@@ -106,6 +111,49 @@ class LawyersViewModel
                 }
                 Log.e("LawyersViewModel", "변호사 로드 실패: ${e.message}")
             }
+        }
+
+        fun toggleLaywersDialog() {
+            _lawyersViewState.update {
+                it.copy(
+                    showLaywersDialog = !it.showLaywersDialog,
+                )
+            }
+        }
+
+        // 중복 로직
+        fun onGridCellClick(selectedItem: LawyersModel) {
+            _lawyersViewState.update {
+                val isContained = it.selectedIdSet.contains(selectedItem)
+                val newItem =
+                    when (isContained) {
+                        true -> it.selectedIdSet - selectedItem
+                        else -> it.selectedIdSet + selectedItem
+                    }
+                it.copy(
+                    selectedIdSet = newItem,
+                )
+            }
+
+            Log.d("선택된 그리드(개별)", _lawyersViewState.value.selectedIdSet.toString())
+        }
+
+        // 전체선택
+        fun toggleSelectedTotalChecked() {
+            _lawyersViewState.update {
+                val isTotalChecked = !it.selectedTotalChecked
+
+                val newIdSet =
+                    when (isTotalChecked) {
+                        true -> it.laywersList.map { it }.toSet()
+                        else -> emptySet()
+                    }
+                it.copy(
+                    selectedTotalChecked = isTotalChecked,
+                    selectedIdSet = newIdSet,
+                )
+            }
+            Log.d("선택된 그리드(전체)", _lawyersViewState.value.selectedIdSet.toString())
         }
 
         override fun onCleared() {

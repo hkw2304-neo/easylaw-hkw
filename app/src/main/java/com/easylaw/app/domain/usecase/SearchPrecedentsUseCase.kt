@@ -1,8 +1,8 @@
 package com.easylaw.app.domain.usecase
 
+import com.easylaw.app.data.repository.LawRepository
 import com.easylaw.app.data.repository.PrecedentAiRepository
-import com.easylaw.app.data.repository.community.LawRepository
-import com.easylaw.app.data.repository.community.PrecedentResult
+import com.easylaw.app.data.repository.PrecedentResult
 import javax.inject.Inject
 
 class SearchPrecedentsUseCase
