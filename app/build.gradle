@@ -39,6 +39,7 @@ def releaseAlias = localProperties.getProperty('RELEASE_KEY_ALIAS', '')
 
 def googleClientId = localProperties.getProperty("GOOGLE_CLIENT_ID")
 
+def supabaseKey = localProperties.getProperty("SUPABASE_KEY")
 
 android {
     namespace 'com.easylaw.app'
@@ -92,6 +93,7 @@ android {
                 NAVER_MAP_ID: naverMapId]
         buildConfigField("String", "DEEPL_API_KEY", "\"${deeplApiKey}\"")
         buildConfigField("String", "GOOGLE_CLIENT_ID", "\"${googleClientId}\"")
+        buildConfigField("String", "SUPABASE_KEY", "\"${supabaseKey}\"")
     }
 
     buildTypes {

@@ -1,5 +1,6 @@
 package com.easylaw.app.di
 
+import com.easylaw.app.BuildConfig
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -20,9 +21,7 @@ object SupabaseModule {
     fun provideSupabaseClient(): SupabaseClient =
         createSupabaseClient(
             supabaseUrl = "https://qecbifdhdjebqxpzucal.supabase.co",
-            supabaseKey =
-                "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFlY2JpZmRoZGplYnF4cHp1Y2FsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA4NjI5MTUsImV4cCI6MjA4NjQzODkxNX0." +
-                    "YrUAPYN33L3KTpwyk09PMxQ1-nSHVIH84ZaQ37KTJEc",
+            supabaseKey = BuildConfig.SUPABASE_KEY,
         ) {
             install(Postgrest)
             install(Storage)
