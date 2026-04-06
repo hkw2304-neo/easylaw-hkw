@@ -86,8 +86,36 @@ class LawyersReserveViewModel
                     userId = _userId,
                 )
             }
-            viewModelScope.launch {
+
+            laywersReserveLoadData {
                 loadLaywerReserveData()
+            }
+        }
+
+        fun laywersReserveLoadData(loadFunc: suspend () -> Unit) {
+            viewModelScope.launch {
+                try {
+                    _lawyersReserveViewState.update {
+                        it.copy(
+                            isLoading = true,
+                        )
+                    }
+
+                    loadFunc()
+
+                    _lawyersReserveViewState.update {
+                        it.copy(
+                            isLoading = false,
+                        )
+                    }
+                } catch (e: Exception) {
+                    Log.e("상담예약 에러", e.toString())
+                    _lawyersReserveViewState.update {
+                        it.copy(
+                            isLoading = false,
+                        )
+                    }
+                }
             }
         }
 

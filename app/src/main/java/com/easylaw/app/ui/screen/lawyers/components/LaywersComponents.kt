@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -38,7 +37,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.easylaw.app.data.models.lawer.LawyersModel
 import com.easylaw.app.ui.components.CommonDataGrid
-import com.google.common.math.LinearTransformation.horizontal
+import com.easylaw.app.ui.components.TableCell
 
 @Composable
 fun LaywersDialog(
@@ -54,8 +53,6 @@ fun LaywersDialog(
     selectedSet: Set<LawyersModel>,
     toggleSelectedTotalChecked: () -> Unit,
 ) {
-    val verticalScrollState = rememberScrollState()
-    val horizonScrollState = rememberScrollState()
     val columnWidth = 110.dp
 
     Dialog(onDismissRequest = onDismiss) {
@@ -180,61 +177,8 @@ fun LaywersDialog(
                             Modifier
                                 .padding(24.dp)
                                 .fillMaxHeight(),
-                        //                            .verticalScroll(verticalScrollState),
                         horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
-                        // 출력 1. 카드 형식의 가로 스크롤 리스트
-                        //                LazyRow(
-                        //                    modifier = Modifier.fillMaxWidth(),
-                        //                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        //                    contentPadding = PaddingValues(horizontal = 4.dp)
-                        //                ) {
-                        //                    items(lawyersList) { lawyer ->
-                        //                        LawyerHorizontalDetailItem(
-                        //                            lawyer = lawyer,
-                        //                            isSelected = selectedLawyerId == lawyer.id,
-                        //                            onClick = { onLawyerClick(lawyer) }
-                        //                        )
-                        //                    }
-                        //                }
-                        //                Surface(
-                        //                    modifier = Modifier.fillMaxWidth(),
-                        //                    shape = RoundedCornerShape(12.dp),
-                        //                    border = BorderStroke(1.dp, Color(0xFFE5E8EB))
-                        //                ) {
-                        //                    Column(
-                        //                        modifier = Modifier.horizontalScroll(horizonScrollState) // 가로 스크롤 적용
-                        //                    ) {
-                        //                        // 1. 테이블 헤더
-                        //                        Row(
-                        //                            modifier = Modifier.background(Color(0xFFF9FAFB)),
-                        //                            verticalAlignment = Alignment.CenterVertically
-                        //                        ) {
-                        //                            Box(
-                        //                                modifier = Modifier
-                        //                                    .width(50.dp)
-                        //                                    .padding(8.dp),
-                        //                                contentAlignment = Alignment.Center
-                        //                            ) {
-                        //                                Checkbox(
-                        //                                    checked = selectedTotalChecked,
-                        //                                    onCheckedChange = {
-                        //                                        toggleSelectedTotalChecked()
-                        //                                    },
-                        //                                    colors = CheckboxDefaults.colors(checkedColor = Color(0xFF3182F6))
-                        //                                )
-                        //                            }
-                        //
-                        //                            TableCell("순서", columnWidth, isHeader = true)
-                        //                            TableCell("이름", columnWidth, isHeader = true)
-                        //                            TableCell("전문분야", columnWidth, isHeader = true)
-                        //                            TableCell("기수", columnWidth, isHeader = true)
-                        //                            TableCell("출신대학", columnWidth, isHeader = true)
-                        //                            TableCell("경력", columnWidth, isHeader = true)
-                        //                            TableCell("지역", columnWidth, isHeader = true)
-                        //                        }
-                        //
-                        //                        HorizontalDivider(color = Color(0xFFE5E8EB))
                         CommonDataGrid(
                             items = lawyersList,
                             selectedSet = selectedSet,
@@ -250,6 +194,7 @@ fun LaywersDialog(
                             TableCell(lawyer.university, columnWidth)
                             TableCell("${lawyer.careerYears}년", columnWidth)
                             TableCell(lawyer.officeLocation, columnWidth)
+//                            TableCell(lawyer.officeLocation, columnWidth)
                         }
                     }
                 }
@@ -318,28 +263,4 @@ fun DetailRow(
         Text(text = label, fontSize = 13.sp, color = Color(0xFF4E5968))
         Text(text = value, fontSize = 13.sp, fontWeight = FontWeight.Medium, color = Color(0xFF191F28))
     }
-}
-
-// 출력 2 아이템
-@Composable
-fun TableCell(
-    text: String,
-    width: androidx.compose.ui.unit.Dp,
-    isHeader: Boolean = false,
-) {
-    Text(
-        text = text,
-        modifier =
-            Modifier
-                .width(width)
-                .padding(vertical = 14.dp, horizontal = 8.dp),
-        style =
-            TextStyle(
-                fontSize = if (isHeader) 13.sp else 13.sp,
-                fontWeight = if (isHeader) FontWeight.Bold else FontWeight.Normal,
-                color = if (isHeader) Color(0xFF191F28) else Color(0xFF4E5968),
-                textAlign = TextAlign.Center,
-            ),
-        maxLines = 1,
-    )
 }
