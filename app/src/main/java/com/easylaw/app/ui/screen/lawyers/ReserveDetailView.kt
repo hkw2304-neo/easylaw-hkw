@@ -1,8 +1,6 @@
 package com.easylaw.app.ui.screen.lawyers
 
 import android.content.Context
-import android.graphics.Bitmap
-import android.net.Uri
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -38,7 +36,6 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -50,14 +47,11 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
-import com.easylaw.app.data.models.common.FileUploadModel
 import com.easylaw.app.ui.components.CategoryDropDown
 import com.easylaw.app.ui.components.CommonIndicator
-import com.easylaw.app.ui.components.CommonPreview
 import com.easylaw.app.ui.components.CommonScreen
 import com.easylaw.app.ui.components.CommonTextField
-import com.easylaw.app.ui.components.getPdfBitmap
-import com.easylaw.app.ui.components.getVideoBitmap
+import com.easylaw.app.util.Common.downloadFile
 import com.easylaw.app.viewModel.lawyers.ReserveDetailViewModel
 import com.easylaw.app.viewModel.lawyers.ReserveDetailViewState
 
@@ -95,13 +89,6 @@ fun ReserveDetailView(
 
         if (viewState.isLoading) {
             CommonIndicator(title = "잠시만 기다려주세요...")
-        }
-        if (viewState.previewImage.previewImage.isNotEmpty()) {
-            CommonPreview(
-                previewImage = viewState.previewImage.previewImage,
-                mineType = viewState.previewImage.mineType,
-                clickable = { viewModel.onImagePreviewDismissed() },
-            )
         }
     }
 }
@@ -277,7 +264,6 @@ fun ReserveDetailItemSection(
 
                 FileListDetailSection(
                     state = state,
-                    viewModel = viewModel,
                     context = context,
                 )
             }
@@ -288,7 +274,6 @@ fun ReserveDetailItemSection(
 @Composable
 fun FileListDetailSection(
     state: ReserveDetailViewState,
-    viewModel: ReserveDetailViewModel,
     context: Context,
 ) {
     val scrollState = rememberScrollState()
@@ -320,8 +305,7 @@ fun FileListDetailSection(
                                 .clip(RoundedCornerShape(12.dp))
                                 .background(Color(0xFFF8F9FA)) // 아주 연한 배경색으로 구분감 주기
                                 .clickable {
-//                                    viewModel.onFilePreview(image = image)
-                                    viewModel.downloadFile(
+                                    downloadFile(
                                         context = context,
                                         url = image.uri,
                                         fileName = image.name,
@@ -415,22 +399,4 @@ fun FileListDetailSection(
             }
         }
     }
-}
-
-@Composable
-fun fileToBitmapDetail(
-    context: Context,
-    image: FileUploadModel,
-): Bitmap? {
-    val fileBitmap =
-        remember(image.uri) {
-            if (image.mimeType.contains("pdf")) {
-                getPdfBitmap(context, Uri.parse(image.uri), 0) // 0번 페이지
-            } else if (image.mimeType.contains("video")) {
-                getVideoBitmap(context, image.uri)
-            } else {
-                null
-            }
-        }
-    return fileBitmap
 }

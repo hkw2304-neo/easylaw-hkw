@@ -1,17 +1,10 @@
 package com.easylaw.app.viewModel.lawyers
 
-import android.app.DownloadManager
-import android.content.Context
-import android.net.Uri
-import android.os.Environment
 import android.util.Log
-import android.widget.Toast
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.easylaw.app.data.models.common.FileUploadModel
 import com.easylaw.app.data.models.lawer.LaywersReserveReqModel
-import com.easylaw.app.ui.components.MineType
 import dagger.hilt.android.lifecycle.HiltViewModel
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.postgrest.from
@@ -32,16 +25,6 @@ data class ReserveDetailViewState(
             uploadFileList = emptyList(),
         ),
     val isLoading: Boolean = false,
-    val previewImage: PreviewImageType =
-        PreviewImageType(
-            previewImage = "",
-            mineType = MineType.IMAGE,
-        ),
-)
-
-data class PreviewImageDetailType(
-    val previewImage: String = "",
-    val mineType: MineType = MineType.IMAGE,
 )
 
 @HiltViewModel
@@ -106,87 +89,5 @@ class ReserveDetailViewModel
                 )
             }
 //        Log.d("선택된 상담 상세", res.toString())
-        }
-
-        fun onFilePreview(image: FileUploadModel) {
-            when {
-                image.mimeType.contains("image") -> {
-                    Log.d("mineType", image.mimeType)
-                    _reserveDetailViewState.update {
-                        it.copy(
-                            previewImage =
-                                PreviewImageType(
-                                    previewImage = image.uri,
-                                    mineType = MineType.IMAGE,
-                                ),
-                        )
-                    }
-                }
-                image.mimeType.contains("video") -> {
-                    Log.d("mineType", image.mimeType)
-                    _reserveDetailViewState.update {
-                        it.copy(
-                            previewImage =
-                                PreviewImageType(
-                                    previewImage = image.uri,
-                                    mineType = MineType.VIDEO,
-                                ),
-                        )
-                    }
-                }
-                image.mimeType.contains("pdf") -> {
-                    Log.d("mineType", image.mimeType)
-                    _reserveDetailViewState.update {
-                        it.copy(
-                            previewImage =
-                                PreviewImageType(
-                                    previewImage = image.uri,
-                                    mineType = MineType.PDF,
-                                ),
-                        )
-                    }
-                }
-                else -> {
-                    Log.d("지원하지않는 양식", image.mimeType)
-                }
-            }
-        }
-
-        fun onImagePreviewDismissed() {
-            _reserveDetailViewState.update {
-                it.copy(
-                    previewImage =
-                        PreviewImageType(
-                            previewImage = "",
-                            mineType = MineType.IMAGE,
-                        ),
-                )
-            }
-        }
-
-        fun downloadFile(
-            context: Context,
-            url: String,
-            fileName: String,
-        ) {
-            try {
-                val request =
-                    DownloadManager
-                        .Request(Uri.parse(url))
-                        .setTitle(fileName)
-                        .setDescription("파일을 다운로드 중입니다...")
-                        .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
-                        .setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, fileName)
-                        .setAllowedOverMetered(true)
-                        .setAllowedOverRoaming(true)
-
-                val downloadManager = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
-                downloadManager.enqueue(request)
-
-                Toast.makeText(context, "다운로드를 시작합니다.", Toast.LENGTH_SHORT).show()
-            } catch (e: Exception) {
-                Log.e("DownloadError", "다운로드 실패: ${e.message}")
-                Toast.makeText(context, "다운로드에 실패했습니다.", Toast.LENGTH_SHORT).show()
-            }
         }
     }

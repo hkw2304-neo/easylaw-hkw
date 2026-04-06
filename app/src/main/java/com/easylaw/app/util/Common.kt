@@ -1,9 +1,12 @@
 package com.easylaw.app.util
 
+import android.app.DownloadManager
 import android.content.Context
 import android.net.Uri
+import android.os.Environment
 import android.provider.OpenableColumns
 import android.util.Log
+import android.widget.Toast
 import com.easylaw.app.data.models.common.FileUploadModel
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
@@ -28,6 +31,7 @@ object Common {
             "0.0.0"
         }
 
+    // 파일을 업로드 할 떄는 로컬 주소를 가지고 정보를 반환한다.
     fun getFileUploadModel(
         context: Context,
         uriString: String,
@@ -79,5 +83,31 @@ object Common {
 
         // 소수점 첫째 자리까지만 표시 (예: 1.5 MB)
         return String.format("%.1f %s", sizeInBytes / Math.pow(1024.0, digitGroups.toDouble()), units[digitGroups])
+    }
+
+    fun downloadFile(
+        context: Context,
+        url: String,
+        fileName: String,
+    ) {
+        try {
+            val request =
+                DownloadManager
+                    .Request(Uri.parse(url))
+                    .setTitle(fileName)
+                    .setDescription("파일을 다운로드 중입니다...")
+                    .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+                    .setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, fileName)
+                    .setAllowedOverMetered(true)
+                    .setAllowedOverRoaming(true)
+
+            val downloadManager = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+            downloadManager.enqueue(request)
+
+            Toast.makeText(context, "다운로드를 시작합니다.", Toast.LENGTH_SHORT).show()
+        } catch (e: Exception) {
+            Log.e("DownloadError", "다운로드 실패: ${e.message}")
+            Toast.makeText(context, "다운로드에 실패했습니다.", Toast.LENGTH_SHORT).show()
+        }
     }
 }
