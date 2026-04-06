@@ -6,6 +6,7 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class LaywersReserveReqModel(
+    @SerialName("id") val id: Long = 0L,
     @SerialName("user_name") val userName: String,
     @SerialName("user_email") val userEmail: String,
     @SerialName("detail_title") val detailTitle: String,

@@ -18,6 +18,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Assignment
 import androidx.compose.material.icons.filled.CheckCircle
@@ -25,6 +26,7 @@ import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.PersonSearch
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -57,6 +59,7 @@ fun LawyersView(
     modifier: Modifier,
     viewModel: LawyersViewModel,
     goToReserve: (String) -> Unit,
+    goToReserveDetail: (Long) -> Unit,
     navController: NavHostController,
 ) {
     val viewState by viewModel.lawyersViewState.collectAsState()
@@ -113,6 +116,9 @@ fun LawyersView(
                         ReserveCard(
                             items = viewState.reserveList,
                             showLaywersDialog = { viewModel.toggleLaywersDialog() },
+                            goToReserveDetail = { reserveId ->
+                                goToReserveDetail(reserveId)
+                            },
                         )
                     }
                 } else if (!viewState.isLoading && viewState.reserveList.isEmpty()) {
@@ -181,7 +187,7 @@ fun LawyersView(
                 title = "변호사 명단",
                 desc = "어느 분에게 요청을하시겠습니까?",
                 icon = Icons.Default.PersonSearch,
-                onConfirm = { },
+                onConfirm = { viewModel.onCofirm() },
                 confirmText = "요청",
                 onDismiss = { viewModel.toggleLaywersDialog() },
                 dismissText = "닫기",
@@ -271,6 +277,7 @@ fun SectionOne() {
 fun ReserveCard(
     items: List<LaywersReserveReqModel>,
     showLaywersDialog: () -> Unit,
+    goToReserveDetail: (Long) -> Unit,
 ) {
     Column(
         modifier =
@@ -349,30 +356,48 @@ fun ReserveCard(
                     Spacer(modifier = Modifier.height(10.dp))
 
                     // 2. 중단: 제목 (상담 요약)
-                    Text(
-                        text = item.detailTitle,
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFF191F28),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-
-                    Spacer(modifier = Modifier.height(4.dp))
-
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            imageVector = Icons.Default.CheckCircle, // Material Icons 추가 필요
-                            contentDescription = null,
-                            modifier = Modifier.size(14.dp),
-                            tint = Color(0xFFB0B8C1), // 진행 상태 표시용 그린
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(
-                            text = "상담 접수 대기",
-                            fontSize = 12.sp,
-                            color = Color(0xFF4E5968),
-                        )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column {
+                            Text(
+                                text = item.detailTitle,
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF191F28),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    imageVector = Icons.Default.CheckCircle, // Material Icons 추가 필요
+                                    contentDescription = null,
+                                    modifier = Modifier.size(14.dp),
+                                    tint = Color(0xFFB0B8C1), // 진행 상태 표시용 그린
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = "상담 접수 대기",
+                                    fontSize = 12.sp,
+                                    color = Color(0xFF4E5968),
+                                )
+                            }
+                        }
+                        IconButton(
+                            onClick = {
+                                goToReserveDetail(item.id)
+                            },
+                            modifier = Modifier.size(24.dp),
+                        ) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                                contentDescription = "상세보기",
+                                tint = Color(0xFFB0B8C1), // 은은한 회색
+                            )
+                        }
                     }
                 }
             }

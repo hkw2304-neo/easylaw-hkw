@@ -225,6 +225,7 @@ class MainActivity : FragmentActivity() {
                             NavRoute.COMMUNITY_UPDATE,
                             NavRoute.MAP,
                             NavRoute.LAYWERS_RESERVE,
+                            NavRoute.LAYWERS_RESERVE_DETAIL,
                         )
 
                     ModalNavigationDrawer(

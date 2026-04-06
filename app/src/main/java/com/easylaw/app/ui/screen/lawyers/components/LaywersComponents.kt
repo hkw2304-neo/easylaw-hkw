@@ -149,6 +149,7 @@ fun LaywersDialog(
 
                             Button(
                                 onClick = onConfirm,
+                                enabled = selectedSet.isNotEmpty(),
                                 modifier =
                                     Modifier
                                         .weight(1f)

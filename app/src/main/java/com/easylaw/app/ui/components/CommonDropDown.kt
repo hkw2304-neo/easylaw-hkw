@@ -33,6 +33,7 @@ fun CategoryDropDown(
     desc: String = "",
     onExpandedChange: () -> Unit,
     expanded: Boolean = false,
+    enabled: Boolean = true,
     categories: List<CategoryModel>,
     onValueChange: (String) -> Unit,
     selectedCategory: String,
@@ -63,6 +64,7 @@ fun CategoryDropDown(
                 onValueChange = { categoryName ->
                     onValueChange(categoryName)
                 },
+                enabled = enabled,
                 readOnly = true,
                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
                 colors =

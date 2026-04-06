@@ -34,6 +34,7 @@ import com.easylaw.app.ui.screen.community.CommunityWriteView
 import com.easylaw.app.ui.screen.diagnosis.DiagnosisScreen
 import com.easylaw.app.ui.screen.lawyers.LasywersReserveView
 import com.easylaw.app.ui.screen.lawyers.LawyersView
+import com.easylaw.app.ui.screen.lawyers.ReserveDetailView
 import com.easylaw.app.ui.screen.map.MapScreen
 import com.easylaw.app.ui.screen.onboarding.OnboardingView
 import com.easylaw.app.util.PreferenceManager
@@ -44,6 +45,7 @@ import com.easylaw.app.viewModel.community.CommunityViewModel
 import com.easylaw.app.viewModel.community.CommunityWriteViewModel
 import com.easylaw.app.viewModel.lawyers.LawyersReserveViewModel
 import com.easylaw.app.viewModel.lawyers.LawyersViewModel
+import com.easylaw.app.viewModel.lawyers.ReserveDetailViewModel
 import com.easylaw.app.viewModel.login.LoginViewModel
 import com.easylaw.app.viewModel.sign.SignViewModel
 import kotlinx.coroutines.launch
@@ -69,6 +71,7 @@ object NavRoute {
     const val COMMUNITY_DETAIL = "communityDetail/{id}"
     const val LAWYERS = "lawyers"
     const val LAYWERS_RESERVE = "lawyersReserve/{userId}"
+    const val LAYWERS_RESERVE_DETAIL = "lawyersReserveDetail/{reserveId}"
 
     val bottomItems =
         listOf(
@@ -288,6 +291,11 @@ fun AppRoute(
             LawyersView(
                 modifier = modifier,
                 viewModel = lawyersViewModel,
+                goToReserveDetail = { reserveId ->
+                    navController.navigate("lawyersReserveDetail/$reserveId") {
+                        launchSingleTop = true
+                    }
+                },
                 goToReserve = { userId ->
                     navController.navigate("lawyersReserve/$userId") {
                         launchSingleTop = true
@@ -304,6 +312,21 @@ fun AppRoute(
             LasywersReserveView(
                 modifier = modifier,
                 viewModel = lawyersReserveViewModel,
+                goBack = {
+                    navController.popBackStack()
+                },
+                navController = navController,
+            )
+        }
+
+        composable(
+            route = NavRoute.LAYWERS_RESERVE_DETAIL,
+            arguments = listOf(navArgument("reserveId") { type = NavType.LongType }),
+        ) {
+            val reserveDetailViewModel: ReserveDetailViewModel = hiltViewModel()
+            ReserveDetailView(
+                modifier = modifier,
+                viewModel = reserveDetailViewModel,
                 goBack = {
                     navController.popBackStack()
                 },

@@ -117,6 +117,8 @@ class LawyersViewModel
             _lawyersViewState.update {
                 it.copy(
                     showLaywersDialog = !it.showLaywersDialog,
+                    selectedTotalChecked = false,
+                    selectedIdSet = emptySet(),
                 )
             }
         }
@@ -154,6 +156,15 @@ class LawyersViewModel
                 )
             }
             Log.d("선택된 그리드(전체)", _lawyersViewState.value.selectedIdSet.toString())
+        }
+
+        fun onCofirm() {
+//            Log.d("선택받은 변호사", _lawyersViewState.value.selectedIdSet.toString())
+            val setList = _lawyersViewState.value.selectedIdSet
+//            setList.forEach{
+//                item ->
+//                Log.d("선택받은 변호사", item.name)
+//            }
         }
 
         override fun onCleared() {
