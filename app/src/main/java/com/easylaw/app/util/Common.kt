@@ -31,7 +31,7 @@ object Common {
             "0.0.0"
         }
 
-    // 파일을 업로드 할 떄는 로컬 주소를 가지고 정보를 반환한다.
+    // 파일을 업로드 할 떄는 로컬 주소를 가지고 정보를 반환한다.(로컬에서만 하는 작업임)
     fun getFileUploadModel(
         context: Context,
         uriString: String,
@@ -110,4 +110,10 @@ object Common {
             Toast.makeText(context, "다운로드에 실패했습니다.", Toast.LENGTH_SHORT).show()
         }
     }
+
+    // 스트림 형태로 받아서 바이트배열로 반환
+    fun getBytesFromUri(
+        context: Context,
+        uri: Uri,
+    ): ByteArray = context.contentResolver.openInputStream(uri)?.use { it.readBytes() } ?: byteArrayOf()
 }

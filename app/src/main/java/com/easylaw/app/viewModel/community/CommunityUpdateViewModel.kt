@@ -7,22 +7,23 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.easylaw.app.data.models.common.CategoryModel
+import com.easylaw.app.data.models.common.FileUploadModel
 import com.easylaw.app.data.models.common.TemplateFieldModel
 import com.easylaw.app.data.models.community.CommunityWriteModel
 import com.easylaw.app.domain.model.UserSession
-import com.easylaw.app.util.Numbers
+import com.easylaw.app.util.Common.getBytesFromUri
+import com.easylaw.app.util.Common.getFileUploadModel
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.storage.storage
-import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import java.util.UUID
 import javax.inject.Inject
 
 data class CommunityUpdateViewState(
@@ -31,7 +32,8 @@ data class CommunityUpdateViewState(
     val selectedCategory: String = "ALL",
     val communityUpdateTitleField: String = "",
     val communityUpdateContentField: String = "",
-    val selectedImages: List<String> = emptyList(),
+//    val selectedImages: List<FileUploadModel> = emptyList(),
+    val uploadFileList: List<FileUploadModel> = emptyList(),
     val isShowDialog: Boolean = false,
     val previewImage: String? = "",
     val isUpdateLoading: Boolean = false,
@@ -39,8 +41,6 @@ data class CommunityUpdateViewState(
     // 항목별 가변 필드 값
     val categoryField: List<TemplateFieldModel> = emptyList(),
     val selectedTextFields: Map<String, String> = emptyMap(),
-    val isWriteSuccess: Boolean = false,
-    val isErrorMsg: String = "",
     val isGoBack: Boolean = false,
 )
 
@@ -58,24 +58,53 @@ class CommunityUpdateViewModel
 
         private val updateId: Long = savedStateHandle.get<Long>("updateId") ?: 0L
 
-        private val _isUpdateSuccess = Channel<Unit>()
-        val isUpdateSuccess = _isUpdateSuccess.receiveAsFlow()
-
         init {
+
+            updateViewDataLoad {
+                coroutineScope {
+                    val categoryInfo =
+                        async {
+                            loadCategories()
+                        }
+                    val updateInfo =
+                        async {
+                            loadCommunityUpdate()
+                        }
+                    categoryInfo.await()
+                    updateInfo.await()
+                }
+            }
+        }
+
+        fun updateViewDataLoad(func: suspend () -> Unit) {
             viewModelScope.launch {
-                loadCategories()
-                loadCommunityUpdate()
+                try {
+                    _commnuityUpdateViewState.update {
+                        it.copy(
+                            isUpdateLoading = true,
+                        )
+                    }
+
+                    func()
+
+                    _commnuityUpdateViewState.update {
+                        it.copy(
+                            isUpdateLoading = false,
+                        )
+                    }
+                } catch (e: Exception) {
+                    Log.e("updateViewDataLoad error", e.toString())
+                    _commnuityUpdateViewState.update {
+                        it.copy(
+                            isUpdateLoading = false,
+                        )
+                    }
+                }
             }
         }
 
         suspend fun loadCategories() {
             try {
-                _commnuityUpdateViewState.update {
-                    it.copy(
-                        isUpdateLoading = true,
-                    )
-                }
-
                 val result =
                     supabase
                         .from("categories")
@@ -89,12 +118,6 @@ class CommunityUpdateViewModel
                 }
             } catch (e: Exception) {
                 Log.e("Category Error", e.toString())
-            } finally {
-                _commnuityUpdateViewState.update {
-                    it.copy(
-                        isUpdateLoading = false,
-                    )
-                }
             }
         }
 
@@ -130,7 +153,7 @@ class CommunityUpdateViewModel
                         communityUpdateTitleField = updatePost.title, // 제목 매핑
                         communityUpdateContentField = updatePost.content, // 내용 매핑
                         selectedCategory = initialKey, // 카테고리 매핑
-                        selectedImages = updatePost.images,
+                        uploadFileList = updatePost.images,
                         categoryField = fieldsTemplate,
                         selectedTextFields = savedExtraData,
                     )
@@ -168,15 +191,30 @@ class CommunityUpdateViewModel
         }
 
         // 선택한 이미지 문자열로 저장
-        fun onImageAdded(uri: String) {
+//        fun onImageAdded(uri: String) {
+//            _commnuityUpdateViewState.update {
+//                it.copy(selectedImages = it.selectedImages + uri)
+//            }
+//        }
+
+        fun onFileSelected(
+            context: Context,
+            uri: String,
+        ) {
+            val fileModel = getFileUploadModel(context, uri)
+            Log.d("글쓰기 수정", fileModel.toString())
             _commnuityUpdateViewState.update {
-                it.copy(selectedImages = it.selectedImages + uri)
+                it.copy(
+                    uploadFileList = it.uploadFileList + fileModel,
+                )
             }
         }
 
         fun removeSelectedImage(uri: String) {
             _commnuityUpdateViewState.update {
-                it.copy(selectedImages = it.selectedImages - uri)
+                val updateFileList = it.uploadFileList.filterNot { it.uri == uri }
+
+                it.copy(uploadFileList = updateFileList)
             }
         }
 
@@ -224,6 +262,7 @@ class CommunityUpdateViewModel
                 try {
                     _commnuityUpdateViewState.update {
                         it.copy(
+                            isGoBack = false,
                             isUpdateLoading = true,
                             isUpdateErrorLoading = false,
                         )
@@ -232,17 +271,26 @@ class CommunityUpdateViewModel
                     val state = _commnuityUpdateViewState.value
                     val selectedCategory = state.categoryList[state.selectedCategory]?.name ?: "기타"
 
-                    val alreadyImg = state.selectedImages.filter { it.startsWith("http") }
-                    val newUrl = state.selectedImages.filter { !it.startsWith("http") }
+                    val alreadyImg = state.uploadFileList.filter { it.uri.startsWith("http") }
+                    val newUrl = state.uploadFileList.filter { !it.uri.startsWith("http") }
 
+                    // .map 원본 리스트는 건드리지않고 요소로 작업을 하기 위함
                     val newImg =
-                        if (newUrl.isNotEmpty()) {
-                            uploadImagesToStorage(newUrl) // 새 이미지만 던짐
-                        } else {
-                            emptyList()
+                        newUrl.map { item ->
+                            val fileName = "${System.currentTimeMillis()}_${item.name}"
+                            val filePath = "community/$fileName"
+                            val fileBytes = getBytesFromUri(context, Uri.parse(item.uri))
+                            val bucket = supabase.storage.from("community")
+                            bucket.upload(
+                                path = filePath,
+                                data = fileBytes,
+                            )
+                            val publicUrl = bucket.publicUrl(filePath)
+                            item.copy(uri = publicUrl)
                         }
 
                     val finalImg = alreadyImg + newImg
+                    Log.d("수정 사진 사이즈", finalImg.size.toString())
 
 //                Log.d("finalImg", finalImg.size.toString())
 //                Log.d("alreadyImg", alreadyImg.toString())
@@ -256,7 +304,7 @@ class CommunityUpdateViewModel
                             content = state.communityUpdateContentField,
                             author = userSession.getUserState().name,
 //                            images = state.selectedImages,
-                            images = if (finalImg.size == 0) emptyList() else finalImg,
+                            images = finalImg,
                             extraData = state.selectedTextFields,
 //                        images = uploadedImageUrls,
                         )
@@ -266,7 +314,7 @@ class CommunityUpdateViewModel
                         }
                     }
                     // 성공 신호 보내기
-                    _isUpdateSuccess.send(Unit)
+//                _isUpdateSuccess.send(Unit)
                 } catch (e: Exception) {
                     _commnuityUpdateViewState.update {
                         it.copy(
@@ -277,35 +325,11 @@ class CommunityUpdateViewModel
                 } finally {
                     _commnuityUpdateViewState.update {
                         it.copy(
+                            isGoBack = true,
                             isUpdateLoading = false,
                         )
                     }
                 }
             }
-        }
-
-        private suspend fun uploadImagesToStorage(uris: List<String>): List<String> {
-            val publicUrls = mutableListOf<String>()
-
-            uris.forEach { uriString ->
-                val uri = Uri.parse(uriString)
-                val fileName = "community_${System.currentTimeMillis()}_${UUID.randomUUID().toString().take(Numbers.FIVE)}.jpg"
-
-                val inputStream = context.contentResolver.openInputStream(uri)
-                val bytes = inputStream?.use { it.readBytes() }
-
-                if (bytes != null) {
-                    val bucket = supabase.storage.from("community")
-
-                    bucket.upload(
-                        path = fileName,
-                        data = bytes,
-                        upsert = false,
-                    )
-                    val url = bucket.publicUrl(fileName)
-                    publicUrls.add(url)
-                }
-            }
-            return publicUrls
         }
     }

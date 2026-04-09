@@ -65,6 +65,7 @@ import io.github.jan.supabase.gotrue.auth
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import kotlin.String
 
 private val NAV_BAR_COLOR = Color(0xFFEAEFEF)
 private val SELECTED_ICON_COLOR = Color(0xFFD95F1E)
@@ -122,14 +123,20 @@ class MainActivity : FragmentActivity() {
          */
         lifecycleScope.launch {
             try {
+                // first : 해당 키에는 하나의 값만 가지는데 이걸 가져오기 위함
                 val savedUser = preferenceManager.userData.first()
+
                 val currentSupabaseSession = supabase.auth.currentSessionOrNull()
 
                 Log.d("session 유지 확인", "savedUser: $savedUser, currentSupabaseSession: $currentSupabaseSession")
 
+                // 1. 기기에 저장된 값 확인
                 if (savedUser != null && savedUser.id.isNotEmpty()) {
+                    Log.d("여기로??", "여기냐")
                     userSession.setLoginInfo(savedUser)
                 } else {
+                    // 2. 없다는 건 로그아웃 상태이므로 앱 시작시 모든 값 초기화
+                    Log.d("없다", "없다니까")
                     userSession.sessionClear()
                     preferenceManager.sessionClear()
                     if (currentSupabaseSession != null) supabase.auth.signOut()
@@ -163,9 +170,12 @@ class MainActivity : FragmentActivity() {
                 } else {
                     // Nav
                     val navController = rememberNavController()
+                    // 이동 이력 저장용
                     val navBackStackEntry by navController.currentBackStackEntryAsState()
+                    // 현재 이동한 도착지
                     val currentRoute = navBackStackEntry?.destination?.route
 
+//                    Log.d("라우트 정리", currentRoute.toString())
                     // Language
                     val languageState = remember { mutableStateOf(false) }
                     val currentLanguageCode by preferenceManager.languageState.collectAsState()
@@ -230,6 +240,7 @@ class MainActivity : FragmentActivity() {
 
                     ModalNavigationDrawer(
                         drawerState = drawerState,
+                        // 사이드 바 가리는 용도
                         gesturesEnabled = currentRoute !in hideBarsRoutes,
                         drawerContent = {
                             EasylawSideBar(

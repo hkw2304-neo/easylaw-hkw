@@ -225,6 +225,7 @@ fun AppRoute(
                         launchSingleTop = true
                     }
                 },
+                navController = navController,
             )
 //            CommunityDetailView(
 //                modifier = modifier,
@@ -248,6 +249,7 @@ fun AppRoute(
                 modifier = modifier,
                 viewModel = communityUpdateViewModel,
                 goBack = { navController.popBackStack() },
+                navController = navController,
             )
         }
         // 커뮤니티 - 글쓰기

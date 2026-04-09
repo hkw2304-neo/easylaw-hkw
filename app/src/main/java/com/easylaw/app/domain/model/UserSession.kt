@@ -2,7 +2,6 @@ package com.easylaw.app.domain.model
 
 import com.easylaw.app.util.PreferenceManager
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.serialization.Serializable
@@ -34,7 +33,7 @@ class UserSession
         private val preferenceManager: PreferenceManager,
     ) {
         private val _userInfo = MutableStateFlow(UserInfo())
-        val userInfo: StateFlow<UserInfo> = _userInfo.asStateFlow()
+        val userInfo = _userInfo.asStateFlow()
 
         // 앱 시작 시 세션 불러오는 동안 다른 화면 보여줄 변수
         private val _isInitialized = MutableStateFlow(false)

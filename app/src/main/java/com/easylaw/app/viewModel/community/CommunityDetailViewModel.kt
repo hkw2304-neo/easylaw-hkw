@@ -20,6 +20,7 @@ import com.easylaw.app.data.models.community.CommunityWriteModel
 import com.easylaw.app.data.models.community.LikeUserResponse
 import com.easylaw.app.data.models.community.PdfItem
 import com.easylaw.app.domain.model.TopCommenter
+import com.easylaw.app.domain.model.UserInfo
 import com.easylaw.app.domain.model.UserSession
 import com.kakao.sdk.share.ShareClient
 import com.kakao.sdk.template.model.Button
@@ -38,6 +39,9 @@ import io.github.jan.supabase.postgrest.rpc
 import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.readBytes
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
@@ -46,7 +50,7 @@ import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 data class CommunityDetailViewState(
-    val userId: String = "",
+    val userState: UserInfo = UserInfo(),
     val communityDetail: CommunityWriteModel? = null,
     val isLoading: Boolean = false,
     val previewImage: String? = "",
@@ -73,7 +77,7 @@ data class CommunityDetailViewState(
     val deleteCommunityInputText: String = "",
     val topCommenters: List<TopCommenter> = emptyList(),
     val isCommunityDeleted: Boolean = false,
-    val isDownLoading: Boolean = false,
+//    val isDownLoading: Boolean = false,
     val successDownLoad: Boolean = false,
     val errorDownText: String = "",
     val categoryField: List<TemplateFieldModel> = emptyList(),
@@ -96,42 +100,60 @@ class CommunityDetailViewModel
         private val _communityDetailViewState = MutableStateFlow(CommunityDetailViewState())
         val communityDetailViewState = _communityDetailViewState.asStateFlow()
 
-//        private val _isDeleteSuccess = Channel<Unit>()
-//        val isDeleteSuccess = _isDeleteSuccess.receiveAsFlow()
-//    private val _isDeleteSuccess = MutableSharedFlow<Unit>()
-//    val isDeleteSuccess = _isDeleteSuccess.asSharedFlow()
-
         init {
-            // 부모의 생명주기 울타리
             viewModelScope.launch {
-            /*
-                자식 생명주기
-                collect는 데이터를 계속 기다리는 작업
-                별도의 작업공간(launch)을 만들어 작업을 병렬로 처리한다.
-             */
+
                 launch {
                     userSession.userInfo.collect { user ->
                         _communityDetailViewState.update {
                             it.copy(
                                 isReadOnly = user.id.isEmpty(),
-                                userId = user.id,
+                                userState = user,
                             )
                         }
                     }
                 }
+            }
+            loadAllDetailData()
+        }
 
-//            loadCommunityDetail(id = id)
-//            loadComments()
+        fun detailLoadData(func: suspend () -> Unit) {
+            viewModelScope.launch {
+                try {
+                    _communityDetailViewState.update {
+                        it.copy(
+                            isLoading = true,
+                        )
+                    }
+
+                    func()
+
+                    _communityDetailViewState.update {
+                        it.copy(
+                            isLoading = false,
+                        )
+                    }
+                } catch (e: Exception) {
+                    Log.e("상세보기 불러오기 에러", e.toString())
+                    _communityDetailViewState.update {
+                        it.copy(
+                            isLoading = false,
+                        )
+                    }
+                }
             }
         }
 
-        fun refreshCommunityDetail() {
-//        Log.d("read", _communityDetailViewState.value.isReadOnly.toString())
-            viewModelScope.launch {
-                loadCommunityDetail(id = id)
-                loadCategories()
-                loadTopCommenters()
-                loadComments()
+        fun loadAllDetailData() {
+            detailLoadData {
+                coroutineScope {
+                    val communityDetail = async { loadCommunityDetail(id = id) }
+                    val category = async { loadCategories() }
+                    val topCommenters = async { loadTopCommenters() }
+                    val comments = async { loadComments() }
+
+                    awaitAll(communityDetail, category, topCommenters, comments)
+                }
             }
         }
 
@@ -662,7 +684,7 @@ class CommunityDetailViewModel
                                 Content(
                                     title = contents.title,
                                     description = contents.content,
-                                    imageUrl = firstImage ?: "https://your-image-url.com/logo.png",
+                                    imageUrl = firstImage?.uri ?: "https://your-image-url.com/logo.png",
                                     link =
                                         Link(
                                         /*

@@ -11,6 +11,7 @@ import com.easylaw.app.data.models.common.FileUploadModel
 import com.easylaw.app.data.models.lawer.LaywersReserveReqModel
 import com.easylaw.app.domain.model.UserInfo
 import com.easylaw.app.ui.components.MineType
+import com.easylaw.app.util.Common.getBytesFromUri
 import com.easylaw.app.util.Common.getFileUploadModel
 import dagger.hilt.android.lifecycle.HiltViewModel
 import io.github.jan.supabase.SupabaseClient
@@ -257,7 +258,7 @@ class LawyersReserveViewModel
             uri: String,
         ) {
             val fileModel = getFileUploadModel(context, uri)
-
+            Log.d("예약", fileModel.toString())
             _lawyersReserveViewState.update {
                 it.copy(
                     lawyersReserveInputForm =
@@ -266,14 +267,6 @@ class LawyersReserveViewModel
                         ),
                 )
             }
-
-//        _lawyersReserveViewState.update {
-//            it.copy(
-//                lawyersReserveInputForm = LawyersReserveInputFormState(
-//                    uploadFileList = it.lawyersReserveInputForm.uploadFileList + fileModel
-//                )
-//            )
-//        }
         }
 
         fun onFilePreview(image: FileUploadModel) {
@@ -361,8 +354,7 @@ class LawyersReserveViewModel
                         currentForm.uploadFileList.map { fileModel ->
                             val fileName = "${System.currentTimeMillis()}_${fileModel.name}"
                             val filePath = "reservations/$fileName"
-
-                            // 파일을 바이트 배열로 변환 (추후 구현할 유틸 함수)
+                            Log.d("상담 path", filePath)
                             val fileBytes = getBytesFromUri(context, Uri.parse(fileModel.uri))
 
                             // Storage 업로드
@@ -375,6 +367,7 @@ class LawyersReserveViewModel
                             // DB 저장을 위해 URI를 변환된 URL로 교체한 새 모델 생성
                             fileModel.copy(uri = publicUrl)
                         }
+                    Log.d("uploadFiles", uploadedFiles.toString())
 
                     val request =
                         LaywersReserveReqModel(
@@ -416,9 +409,4 @@ class LawyersReserveViewModel
                 )
             }
         }
-
-        private fun getBytesFromUri(
-            context: Context,
-            uri: Uri,
-        ): ByteArray = context.contentResolver.openInputStream(uri)?.use { it.readBytes() } ?: byteArrayOf()
     }

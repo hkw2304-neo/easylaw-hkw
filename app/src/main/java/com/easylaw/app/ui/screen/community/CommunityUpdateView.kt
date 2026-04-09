@@ -2,6 +2,7 @@ package com.easylaw.app.ui.screen.community
 
 import CommonImageButton
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -40,10 +41,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.navigation.NavHostController
 import coil.compose.AsyncImage
 import com.easylaw.app.ui.components.CommonButton
 import com.easylaw.app.ui.components.CommonDialog
@@ -52,6 +55,7 @@ import com.easylaw.app.ui.components.CommonIndicator
 import com.easylaw.app.ui.components.CommonPreview
 import com.easylaw.app.ui.components.CommonTextField
 import com.easylaw.app.viewModel.community.CommunityUpdateViewModel
+import kotlin.collections.forEach
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -59,24 +63,28 @@ fun CommunityUpdateView(
     modifier: Modifier = Modifier,
     viewModel: CommunityUpdateViewModel,
     goBack: () -> Unit,
+    navController: NavHostController,
 ) {
     val viewState by viewModel.commnuityUpdateViewState.collectAsState()
     val scrollState = rememberScrollState()
+    val context = LocalContext.current
 
     val galleryLauncher =
         rememberLauncherForActivityResult(
-            contract = ActivityResultContracts.GetContent(),
-        ) { uri ->
-            uri?.let {
-                viewModel.onImageAdded(it.toString())
+            contract = ActivityResultContracts.PickMultipleVisualMedia(),
+        ) { uris ->
+            uris.forEach { uri ->
+                viewModel.onFileSelected(context, uri.toString())
             }
         }
-    LaunchedEffect(Unit) {
-        // channel, collect : 뒤로 가기 로직
-        viewModel.isUpdateSuccess.collect {
+
+    LaunchedEffect(viewState.isGoBack) {
+        if (viewState.isGoBack) {
+            navController.previousBackStackEntry?.savedStateHandle?.set("refresh", true)
             goBack()
         }
     }
+
     Box {
         Scaffold(
             bottomBar = {
@@ -176,7 +184,7 @@ fun CommunityUpdateView(
                 ) {
                     Column {
                         Text(
-                            text = "첨부된 사진 ${viewState.selectedImages.size}/3",
+                            text = "첨부된 사진 ${viewState.uploadFileList.size}/3",
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold,
                             color = Color(0xFF8B95A1),
@@ -191,8 +199,10 @@ fun CommunityUpdateView(
                                     image = Icons.Default.AddPhotoAlternate,
                                     desc = "사진 추가",
                                     onClick = {
-                                        if (viewState.selectedImages.size < 3) {
-                                            galleryLauncher.launch("image/*")
+                                        if (viewState.uploadFileList.size < 3) {
+                                            galleryLauncher.launch(
+                                                PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageAndVideo),
+                                            )
                                         } else {
                                             viewModel.onShowDialog()
                                         }
@@ -200,16 +210,16 @@ fun CommunityUpdateView(
                                 )
                             }
 
-                            items(viewState.selectedImages) { imageUri ->
+                            items(viewState.uploadFileList) { item ->
                                 Box(
                                     modifier =
                                         Modifier
                                             .size(56.dp)
-                                            .clickable { viewModel.onImagePreview(imageUri) }
+                                            .clickable { viewModel.onImagePreview(item.uri) }
                                             .background(Color.White, RoundedCornerShape(12.dp)),
                                 ) {
                                     AsyncImage(
-                                        model = imageUri,
+                                        model = item.uri,
                                         contentDescription = null,
                                         modifier =
                                             Modifier
@@ -225,7 +235,7 @@ fun CommunityUpdateView(
                                                 .offset(x = 4.dp, y = (-4).dp)
                                                 .size(18.dp)
                                                 .background(Color(0xFF4E5968), CircleShape)
-                                                .clickable { viewModel.removeSelectedImage(imageUri) },
+                                                .clickable { viewModel.removeSelectedImage(item.uri) },
                                         contentAlignment = Alignment.Center,
                                     ) {
                                         Icon(

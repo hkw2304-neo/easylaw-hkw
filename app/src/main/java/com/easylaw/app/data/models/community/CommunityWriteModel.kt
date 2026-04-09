@@ -1,6 +1,6 @@
 package com.easylaw.app.data.models.community
 
-import kotlinx.serialization.EncodeDefault
+import com.easylaw.app.data.models.common.FileUploadModel
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -16,8 +16,8 @@ data class CommunityWriteModel(
     val content: String,
     val author: String,
 //    val images: List<String> = emptyList(),
-    @EncodeDefault
-    val images: List<String> = emptyList(),
+    @SerialName("images")
+    val images: List<FileUploadModel>,
     @SerialName("extra_data")
     val extraData: Map<String, String> = emptyMap(),
     /*

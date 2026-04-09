@@ -121,7 +121,7 @@ fun CommentSheetContent(
                     item {
                         Spacer(modifier = Modifier.height(16.dp))
                         CommentItem(
-                            currentUserId = viewState.userId,
+                            currentUserId = viewState.userState.id,
                             comment = parent,
                             isReplyMode = true,
                             toggleOpenMore = { viewModel.toggleOpenMore(it) },
@@ -149,7 +149,7 @@ fun CommentSheetContent(
                 } else {
                     items(viewState.replyList) { reply ->
                         CommentItem(
-                            currentUserId = viewState.userId,
+                            currentUserId = viewState.userState.id,
                             comment = reply,
                             isReplyMode = true,
                             toggleOpenMore = { viewModel.toggleOpenMore(it) },
@@ -164,7 +164,7 @@ fun CommentSheetContent(
                 // [댓글 모드] 일반 댓글 목록
                 items(viewState.communityComments.reversed()) { comment ->
                     CommentItem(
-                        currentUserId = viewState.userId,
+                        currentUserId = viewState.userState.id,
                         comment = comment,
                         isReadOnly = viewState.isReadOnly,
                         clickCommentLike = { if (!viewState.isReadOnly) viewModel.clickCommentLike(it) },

@@ -1,7 +1,10 @@
 package com.easylaw.app.ui.screen.community
 
 import CommonImageButton
+import android.content.Context
+import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -45,6 +48,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -59,6 +63,7 @@ import com.easylaw.app.ui.components.CommonPreview
 import com.easylaw.app.ui.components.CommonScreen
 import com.easylaw.app.ui.components.CommonTextField
 import com.easylaw.app.viewModel.community.CommunityWriteViewModel
+import kotlin.collections.forEach
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -69,6 +74,7 @@ fun CommunityWriteView(
     navController: NavHostController,
 ) {
     val viewState by viewModel.commnuityWriteViewState.collectAsState()
+    val context: Context = LocalContext.current
 
     /*
         갤러리 실행기
@@ -80,10 +86,10 @@ fun CommunityWriteView(
      */
     val galleryLauncher =
         rememberLauncherForActivityResult(
-            contract = ActivityResultContracts.GetContent(),
-        ) { uri ->
-            uri?.let {
-                viewModel.onImageAdded(it.toString())
+            contract = ActivityResultContracts.PickMultipleVisualMedia(),
+        ) { uris: List<Uri> ->
+            uris.forEach { uri ->
+                viewModel.onFileSelected(context, uri.toString())
             }
         }
 
@@ -124,7 +130,7 @@ fun CommunityWriteView(
                             },
                         onClick = {
                             // 디비 연동
-                            viewModel.writeCommunity()
+                            viewModel.writeCommunity(context = context)
                         },
                         color = Color(0xFF3182F6),
                         icon = Icons.Default.Check,
@@ -228,7 +234,7 @@ fun CommunityWriteView(
                                         ) {
                                             Column {
                                                 Text(
-                                                    text = "첨부된 사진 ${viewState.selectedImages.size}/3",
+                                                    text = "첨부된 사진 ${viewState.uploadFileList.size}/3",
                                                     fontSize = 12.sp,
                                                     fontWeight = FontWeight.Bold,
                                                     color = Color(0xFF8B95A1),
@@ -243,8 +249,10 @@ fun CommunityWriteView(
                                                             image = Icons.Default.AddPhotoAlternate,
                                                             desc = "사진 추가",
                                                             onClick = {
-                                                                if (viewState.selectedImages.size < 3) {
-                                                                    galleryLauncher.launch("image/*")
+                                                                if (viewState.uploadFileList.size < 3) {
+                                                                    galleryLauncher.launch(
+                                                                        PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageAndVideo),
+                                                                    )
                                                                 } else {
                                                                     viewModel.onShowDialog()
                                                                 }
@@ -252,16 +260,16 @@ fun CommunityWriteView(
                                                         )
                                                     }
 
-                                                    items(viewState.selectedImages) { imageUri ->
+                                                    items(viewState.uploadFileList) { image ->
                                                         Box(
                                                             modifier =
                                                                 Modifier
                                                                     .size(56.dp)
-                                                                    .clickable { viewModel.onImagePreview(imageUri) }
+                                                                    .clickable { viewModel.onImagePreview(image.uri) }
                                                                     .background(Color.White, RoundedCornerShape(12.dp)),
                                                         ) {
                                                             AsyncImage(
-                                                                model = imageUri,
+                                                                model = image.uri,
                                                                 contentDescription = null,
                                                                 modifier =
                                                                     Modifier
@@ -277,7 +285,7 @@ fun CommunityWriteView(
                                                                         .offset(x = 4.dp, y = (-4).dp)
                                                                         .size(18.dp)
                                                                         .background(Color(0xFF4E5968), CircleShape)
-                                                                        .clickable { viewModel.removeSelectedImage(imageUri) },
+                                                                        .clickable { viewModel.removeSelectedImage(image.uri) },
                                                                 contentAlignment = Alignment.Center,
                                                             ) {
                                                                 Icon(

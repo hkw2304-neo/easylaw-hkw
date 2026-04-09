@@ -157,7 +157,7 @@ class LoginViewModel
 
                         // supabase 로그인
 //                    userSession.setLoginInfo(userInfo)
-                        Log.d("userInfo", userSession.getUserState().toString())
+//                        Log.d("userInfo 지금은 없을걸?", userSession.getUserState().toString())
 //                    _waitUserInfo = userInfo
 
                         _loginViewState.update {

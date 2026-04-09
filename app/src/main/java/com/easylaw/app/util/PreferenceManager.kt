@@ -14,7 +14,6 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
@@ -49,15 +48,22 @@ class PreferenceManager
         // Singleton scope: PreferenceManager 생명주기와 동일하게 유지
         private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
-        val userData: Flow<UserInfo?> =
+        val userData =
             dataStore.data.map { prefs ->
                 val json = prefs[userDataKey] ?: ""
 //                val json = prefs[userDataKey] ?: return@map null
                 try {
-                    // 문자열로 저장된 값을 다시 객체화
-                    Json.decodeFromString<UserInfo>(json)
+
+                    when {
+                        json.isEmpty() -> {
+                            UserInfo()
+                        }
+                        else -> {
+                            Json.decodeFromString<UserInfo>(json)
+                        }
+                    }
                 } catch (e: Exception) {
-                    Log.e("error", e.toString())
+                    Log.e("preference error", e.toString())
                     null
                 }
             }
@@ -89,7 +95,7 @@ class PreferenceManager
             }
         }
 
-        val isOnboardingState: Flow<Boolean> =
+        val isOnboardingState =
             dataStore.data.map { prefs ->
                 prefs[_onboardingKey] ?: false
             }

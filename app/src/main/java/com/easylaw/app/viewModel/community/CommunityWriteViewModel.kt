@@ -6,22 +6,20 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.easylaw.app.data.models.common.CategoryModel
+import com.easylaw.app.data.models.common.FileUploadModel
 import com.easylaw.app.data.models.common.TemplateFieldModel
 import com.easylaw.app.data.models.community.CommunityWriteModel
 import com.easylaw.app.domain.model.UserSession
-import com.easylaw.app.util.Numbers
+import com.easylaw.app.util.Common.getBytesFromUri
+import com.easylaw.app.util.Common.getFileUploadModel
 import dagger.hilt.android.lifecycle.HiltViewModel
-import dagger.hilt.android.qualifiers.ApplicationContext
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.storage.storage
-import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import java.util.UUID
 import javax.inject.Inject
 
 data class CommunityWriteViewState(
@@ -34,7 +32,8 @@ data class CommunityWriteViewState(
     // 공통 입력
     val communityWriteTitleField: String = "",
     val communityWriteContentField: String = "",
-    val selectedImages: List<String> = emptyList(),
+//    val selectedImages: List<String> = emptyList(),
+    val uploadFileList: List<FileUploadModel> = emptyList(),
     // 항목별 가변 필드 값
     val categoryField: List<TemplateFieldModel> = emptyList(),
     val selectedTextFields: Map<String, String> = emptyMap(),
@@ -52,26 +51,15 @@ class CommunityWriteViewModel
     constructor(
         private val supabase: SupabaseClient,
         private val userSession: UserSession,
-        @ApplicationContext private val context: Context,
     ) : ViewModel() {
         private val _commnuityWriteViewState = MutableStateFlow(CommunityWriteViewState())
         val commnuityWriteViewState = _commnuityWriteViewState.asStateFlow()
-
-        // 글쓰기 성공 감지(뒤로가기 용)
-        // channel : 하나의 상태를 알려주기 위함
-        private val _isWriteSuccess = Channel<Unit>()
-        val isWriteSuccess = _isWriteSuccess.receiveAsFlow()
 
         init {
 //            Log.d("ViewModel_LifeCycle", "CommunityWriteViewModel 생성 (HashCode: ${this.hashCode()})")
             viewModelScope.launch {
                 loadCategories()
             }
-        }
-
-        override fun onCleared() {
-            super.onCleared()
-//        Log.d("ViewModel_LifeCycle", "CommunityWriteViewModel 파괴 (onCleared)")
         }
 
         suspend fun loadCategories() {
@@ -120,15 +108,30 @@ class CommunityWriteViewModel
         }
 
         // 선택한 이미지 문자열로 저장
-        fun onImageAdded(uri: String) {
+//        fun onImageAdded(uri: String) {
+//            _commnuityWriteViewState.update {
+//                it.copy(selectedImages = it.selectedImages + uri)
+//            }
+//        }
+        // 갤러리에서 선택시 실행
+        fun onFileSelected(
+            context: Context,
+            uri: String,
+        ) {
+            val fileModel = getFileUploadModel(context, uri)
+            Log.d("글쓰기", fileModel.toString())
             _commnuityWriteViewState.update {
-                it.copy(selectedImages = it.selectedImages + uri)
+                it.copy(
+                    uploadFileList = it.uploadFileList + fileModel,
+                )
             }
         }
 
         fun removeSelectedImage(uri: String) {
             _commnuityWriteViewState.update {
-                it.copy(selectedImages = it.selectedImages - uri)
+                val updateFileList = it.uploadFileList.filterNot { it.uri == uri }
+
+                it.copy(uploadFileList = updateFileList)
             }
         }
 
@@ -162,7 +165,7 @@ class CommunityWriteViewModel
             _commnuityWriteViewState.update { it.copy(previewImage = "") }
         }
 
-        fun writeCommunity() {
+        fun writeCommunity(context: Context) {
             viewModelScope.launch {
                 try {
                     _commnuityWriteViewState.update {
@@ -176,11 +179,18 @@ class CommunityWriteViewModel
                     val state = _commnuityWriteViewState.value
                     val selectedCategory = state.categoryList[state.selectedCategory]?.name ?: "기타"
 
-                    val uploadedImageUrls =
-                        if (state.selectedImages.isNotEmpty()) {
-                            uploadImagesToStorage(state.selectedImages)
-                        } else {
-                            emptyList()
+                    val uploadedFiles =
+                        state.uploadFileList.map { item ->
+                            val fileName = "${System.currentTimeMillis()}_${item.name}"
+                            val filePath = "community/$fileName"
+                            val fileBytes = getBytesFromUri(context, Uri.parse(item.uri))
+                            val bucket = supabase.storage.from("community")
+                            bucket.upload(
+                                path = filePath,
+                                data = fileBytes,
+                            )
+                            val publicUrl = bucket.publicUrl(filePath)
+                            item.copy(uri = publicUrl)
                         }
 
                     val writeModel =
@@ -190,7 +200,7 @@ class CommunityWriteViewModel
                             content = state.communityWriteContentField,
                             author = userSession.getUserState().name,
 //                            images = state.selectedImages,
-                            images = uploadedImageUrls,
+                            images = uploadedFiles,
                             extraData = state.selectedTextFields,
                         )
                     supabase.from("community").insert(writeModel)
@@ -203,6 +213,8 @@ class CommunityWriteViewModel
                             isWriteLoading = false,
                         )
                     }
+
+                    Log.d("글쓰기 완", "완")
                 } catch (e: Exception) {
                     _commnuityWriteViewState.update {
                         it.copy(
@@ -250,30 +262,5 @@ class CommunityWriteViewModel
                     selectedTextFields = updatedMap,
                 )
             }
-        }
-
-        private suspend fun uploadImagesToStorage(uris: List<String>): List<String> {
-            val publicUrls = mutableListOf<String>()
-
-            uris.forEach { uriString ->
-                val uri = Uri.parse(uriString)
-                val fileName = "community_${System.currentTimeMillis()}_${UUID.randomUUID().toString().take(Numbers.FIVE)}.jpg"
-
-                val inputStream = context.contentResolver.openInputStream(uri)
-                val bytes = inputStream?.use { it.readBytes() }
-
-                if (bytes != null) {
-                    val bucket = supabase.storage.from("community")
-
-                    bucket.upload(
-                        path = fileName,
-                        data = bytes,
-                        upsert = false,
-                    )
-                    val url = bucket.publicUrl(fileName)
-                    publicUrls.add(url)
-                }
-            }
-            return publicUrls
         }
     }

@@ -49,6 +49,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -59,9 +60,9 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.compose.LifecycleEventEffect
+import androidx.navigation.NavHostController
 import coil.compose.AsyncImage
+import com.easylaw.app.data.models.common.FileUploadModel
 import com.easylaw.app.data.models.common.TemplateFieldModel
 import com.easylaw.app.ui.components.CommonDialog
 import com.easylaw.app.ui.components.CommonIndicator
@@ -80,6 +81,7 @@ fun CommunityContentView(
     viewModel: CommunityDetailViewModel,
     goBack: () -> Unit,
     goUpdate: (Long) -> Unit,
+    navController: NavHostController,
 ) {
     val viewState by viewModel.communityDetailViewState.collectAsState()
     val contents = viewState.communityDetail
@@ -89,14 +91,25 @@ fun CommunityContentView(
 
     LaunchedEffect(viewState.isCommunityDeleted) {
         if (viewState.isCommunityDeleted) {
+            navController.previousBackStackEntry?.savedStateHandle?.set("refresh", true)
             goBack()
             viewModel.consumeDeleteEvent() // 뒤로 가기 후 상태 초기화
         }
     }
 
-    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
-        viewModel.refreshCommunityDetail()
+    val refreshSignal =
+        navController.currentBackStackEntry
+            ?.savedStateHandle
+            ?.getLiveData<Boolean>("refresh")
+            ?.observeAsState()
+    LaunchedEffect(refreshSignal?.value) {
+        if (refreshSignal?.value == true) {
+//            viewModel.refreshCommunityDetail()
+            viewModel.loadAllDetailData()
+            navController.currentBackStackEntry?.savedStateHandle?.remove<Boolean>("refresh")
+        }
     }
+
     BackHandler {
         if (viewState.isReadOnly) (context as? Activity)?.finish() else goBack()
     }
@@ -160,7 +173,7 @@ fun CommunityContentView(
                     SectionOne(
                         category = contents.category,
                         title = contents.title,
-                        userId = viewState.userId,
+                        userId = viewState.userState.id,
                         communityUserId = contents.user_id ?: "",
                         goUpdate = { goUpdate(contents.id ?: 0L) },
                         communityDelete = { viewModel.communityDelete() },
@@ -558,7 +571,7 @@ fun SectionExtra(
 
 @Composable
 fun SectionThree(
-    images: List<String>,
+    images: List<FileUploadModel>,
     onImagePreview: (String) -> Unit,
 ) {
     Surface(
@@ -580,18 +593,18 @@ fun SectionThree(
                             .fillMaxWidth()
                             .padding(18.dp),
                 ) {
-                    items(images) { imageUri ->
+                    items(images) { item ->
                         Box(
                             modifier =
                                 Modifier
                                     .size(56.dp)
-                                    .clickable { onImagePreview(imageUri) }
+                                    .clickable { onImagePreview(item.uri) }
                                     .background(Color.White, RoundedCornerShape(12.dp)),
                         ) {
                             AsyncImage(
-                                model = imageUri,
+                                model = item.uri,
                                 contentDescription = null,
-                                onSuccess = { Log.d("Coil", "로드 성공: $imageUri") },
+                                onSuccess = { Log.d("Coil", "로드 성공: $item") },
                                 onError = { error -> Log.e("Coil", "로드 실패: ${error.result.throwable.message}") }, // 여기서 에러 확인!
                                 modifier =
                                     Modifier

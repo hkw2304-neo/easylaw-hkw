@@ -67,18 +67,6 @@ class CommunityViewModel
         val communityState = _communityState.asStateFlow()
 
         init {
-//            viewModelScope.launch {
-//                communityViewLoad {
-//                    coroutineScope {
-//                        val categoryInfo = async { loadCategories() } // 카테고리 시작!
-//                        val listInfo = async { loadCommunityLists() } // 리스트 시작!
-//
-//                        // 두 작업이 모두 끝날 때까지 여기서 기다림 (동시 실행 완료)
-//                        categoryInfo.await()
-//                        listInfo.await()
-//                    }
-//                }
-//            }
 
             communityViewLoad {
                 coroutineScope {
