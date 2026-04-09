@@ -6,12 +6,64 @@ import android.net.Uri
 import android.os.Environment
 import android.provider.OpenableColumns
 import android.util.Log
+import android.webkit.MimeTypeMap
 import android.widget.Toast
 import com.easylaw.app.data.models.common.FileUploadModel
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.MultipartBody
+import okhttp3.RequestBody
+import okhttp3.RequestBody.Companion.asRequestBody
+import okhttp3.RequestBody.Companion.toRequestBody
+import java.io.File
+import java.io.FileOutputStream
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 
 object Common {
+    // post 요청 시 요소 변환
+    fun String.toPart(): RequestBody = this.toRequestBody("text/plain".toMediaTypeOrNull())
+
+    /**
+     * Uri를 서버 전송용 MultipartBody.Part로 변환합니다.
+     * partName : 키 값이다.
+     */
+    fun createMultipartBody(
+        context: Context,
+        uri: Uri,
+        partName: String = "file",
+    ): MultipartBody.Part? {
+        val contentResolver = context.contentResolver
+
+        // 1. 파일의 실제 MIME 타입 읽기 (예: "image/png", "video/mp4", "application/pdf")
+        val mimeType = contentResolver.getType(uri) ?: "application/octet-stream"
+
+        // 2. MIME 타입으로부터 확장자 추출 (예: png, mp4, pdf)
+        val extension = MimeTypeMap.getSingleton().getExtensionFromMimeType(mimeType) ?: "tmp"
+
+        return try {
+            val inputStream = contentResolver.openInputStream(uri)
+
+            // 3. 추출한 확장자로 임시 파일 생성
+            val file = File(context.cacheDir, "upload_${System.currentTimeMillis()}.$extension")
+
+            val outputStream = FileOutputStream(file)
+            inputStream?.use { input ->
+                outputStream.use { output ->
+                    input.copyTo(output)
+                }
+            }
+
+            // 4. 알아낸 mimeType으로 포장지(MediaType) 입히기
+            val requestFile = file.asRequestBody(mimeType.toMediaTypeOrNull())
+
+            // 5. 최종 박스 포장 (파일명에 확장자가 포함됨)
+            MultipartBody.Part.createFormData(partName, file.name, requestFile)
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
+        }
+    }
+
     fun formatIsoDate(isoString: String): String =
         try {
             // 1. ISO_DATE_TIME 형식(Supabase 기본형)을 읽어들임
