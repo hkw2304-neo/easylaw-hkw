@@ -5,7 +5,7 @@ import android.net.Uri
 import com.easylaw.app.data.api.CommunityApiService
 import com.easylaw.app.data.models.common.FileUploadModel
 import com.easylaw.app.data.models.community.CommunityPrecSearchModel
-import com.easylaw.app.data.models.sample.SampleReqModel
+import com.easylaw.app.data.models.sample.SampleResModel
 import com.easylaw.app.util.Common.createMultipartBody
 import com.google.gson.Gson
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
@@ -34,7 +34,7 @@ class CommunityRepo
         suspend fun postCommunity(
             req: Map<String, Any>,
             context: Context,
-        ): SampleReqModel {
+        ): SampleResModel {
             val tempFiles = mutableListOf<MultipartBody.Part>()
             // 플러터와 달리 타입 명시해서 캐스팅해야 인식
             val filesList = req["file"] as? List<FileUploadModel> ?: emptyList()

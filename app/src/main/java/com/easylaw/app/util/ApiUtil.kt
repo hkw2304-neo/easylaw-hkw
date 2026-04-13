@@ -9,12 +9,14 @@ import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
+import kotlinx.serialization.json.Json
 import okhttp3.Interceptor
+import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Response
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
-import retrofit2.converter.gson.GsonConverterFactory
+import retrofit2.converter.kotlinx.serialization.asConverterFactory
 import javax.inject.Named
 import javax.inject.Singleton
 
@@ -70,6 +72,14 @@ object ApiUtil {
     @Singleton
     @Named("LawRetrofit") // 🌟 이름 지정
     fun provideLawRetrofit(loggingInterceptor: HttpLoggingInterceptor): Retrofit {
+        val json =
+            Json {
+                ignoreUnknownKeys = true // 서버에 새 필드가 추가되어도 에러 안 남
+                coerceInputValues = true // null 방지 및 기본값 사용
+                encodeDefaults = true // 기본값이 있는 필드도 JSON에 포함
+            }
+        val contentType = "application/json".toMediaType()
+
         val okHttpClient =
             OkHttpClient
                 .Builder()
@@ -81,7 +91,8 @@ object ApiUtil {
             .Builder()
             .baseUrl(BASE_URL)
             .client(okHttpClient)
-            .addConverterFactory(GsonConverterFactory.create())
+//            .addConverterFactory(GsonConverterFactory.create())
+            .addConverterFactory(json.asConverterFactory(contentType))
             .build()
     }
 
@@ -114,7 +125,7 @@ object ApiUtil {
             .Builder()
             .baseUrl(NAVER_BASE_URL)
             .client(okHttpClient)
-            .addConverterFactory(GsonConverterFactory.create())
+//            .addConverterFactory(GsonConverterFactory.create())
             .build()
     }
 

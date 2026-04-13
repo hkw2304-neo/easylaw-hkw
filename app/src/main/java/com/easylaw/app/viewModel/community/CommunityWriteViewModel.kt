@@ -10,12 +10,12 @@ import com.easylaw.app.data.models.common.CategoryModel
 import com.easylaw.app.data.models.common.FileUploadModel
 import com.easylaw.app.data.models.common.TemplateFieldModel
 import com.easylaw.app.data.models.community.CommunityWriteModel
+import com.easylaw.app.data.models.sample.SampleReqModel
 import com.easylaw.app.data.repository.community.CommunityRepo
 import com.easylaw.app.domain.model.UserSession
 import com.easylaw.app.util.Common.createMultipartBody
 import com.easylaw.app.util.Common.getBytesFromUri
 import com.easylaw.app.util.Common.getFileUploadModel
-import com.google.gson.Gson
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import io.github.jan.supabase.SupabaseClient
@@ -25,6 +25,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.toRequestBody
@@ -280,45 +282,64 @@ class CommunityWriteViewModel
         fun postCommunityWithFile() {
             viewModelScope.launch {
                 try {
+                    // 리스트를 순환하면서 특정 조건에 맞는 요소 반환
+                    // val textData = req.filter { it.key != "files" }
+
                     val data =
-                        mapOf(
-                            "id" to "user123",
-                            "name" to "kiwon",
-                            "pw" to "1234",
-                            "adr" to "seoul",
-                            "etc" to "test",
+                        SampleReqModel(
+                            id = "user123",
+                            name = "kiwon",
+                            pw = "1234",
+                            adr = "seoul",
+                            etc = "etc",
                         )
-//                Log.d("req", req.toString())
 
-//                communityRepo.postCommunity(req = req, context = context)
-
-                    val tempFiles = mutableListOf<MultipartBody.Part>()
                     val filesList = _commnuityWriteViewState.value.uploadFileList
 
-                    // Json으로 묶어서 보내기
-                    // map 객체에서 특정 필드만 제외
-//                val textData = req.filter { it.key != "files" }
-                    // Json 변형
-                    val dataToJosn = Gson().toJson(data)
+                    if (filesList.isNotEmpty()) {
+                        // 멀티파트가 포함되면 RequestBody로 보내는게 좋다.
+                        val tempFiles = mutableListOf<MultipartBody.Part>()
+                        val dataToJson = Json.encodeToString(data)
+                        val dataPart = dataToJson.toRequestBody("application/json".toMediaTypeOrNull())
+//                        val filePart =
+//                            when {
+//                                filesList.isEmpty() -> null
+//                                else -> {
+//                                    filesList.forEach { item ->
+//                                        val uri = Uri.parse(item.uri)
+//                                        createMultipartBody(context, uri)?.let {
+//                                            tempFiles.add(it)
+//                                        }
+//                                    }
+//                                    tempFiles
+//                                }
+//                            }
 
-                    // 타입 application/json 명시
-                    val dataPart = dataToJosn.toRequestBody("application/json".toMediaTypeOrNull())
-
-                    val filePart =
-                        when {
-                            filesList.isEmpty() -> null
-                            else -> {
-                                filesList.forEach { item ->
-                                    val uri = Uri.parse(item.uri)
-                                    createMultipartBody(context, uri)?.let {
-                                        tempFiles.add(it)
-                                    }
-                                }
-                                tempFiles
+                        val fileFilter =
+                            filesList.filter { item ->
+                                item.name == "sample"
                             }
-                        }
+                        val fileMap =
+                            filesList.map { item ->
+                                item.name
+                            }
 
-                    val req = service.uploadCommunity(data = dataPart, file = filePart)
+                        // mapNotNull 리스트 순환하면서 반환한다.
+                        val filePart =
+                            filesList.mapNotNull { item ->
+                                val uri = Uri.parse(item.uri)
+                                createMultipartBody(context, uri) // null이면 리스트에 포함되지 않음
+                            }
+                        // 동일
+//                        val filePart2 = filesList.map { item ->
+//                            val uri = Uri.parse(item.uri)
+//                            createMultipartBody(context, uri) // null이면 리스트에 포함되지 않음
+//                        }.filterNotNull()
+
+                        val req = service.uploadCommunity(data = dataPart, file = filePart)
+                    } else {
+                        val req = service.uploadCommunityOnlyText(data = data)
+                    }
                 } catch (e: Exception) {
                     Log.e("첨부파일 업로드 에러", e.toString())
                 }
