@@ -26,6 +26,7 @@ data class UserInfo(
     val created_at: String? = "",
 )
 
+// 내가 만든 클래스는 @Module, @InstallIn(SingletonComponent::class) 가 필요없다
 @Singleton
 class UserSession
     @Inject

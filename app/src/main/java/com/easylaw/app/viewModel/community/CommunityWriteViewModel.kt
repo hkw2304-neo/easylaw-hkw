@@ -11,7 +11,6 @@ import com.easylaw.app.data.models.common.FileUploadModel
 import com.easylaw.app.data.models.common.TemplateFieldModel
 import com.easylaw.app.data.models.community.CommunityWriteModel
 import com.easylaw.app.data.models.sample.SampleReqModel
-import com.easylaw.app.data.repository.community.CommunityRepo
 import com.easylaw.app.domain.model.UserSession
 import com.easylaw.app.util.Common.createMultipartBody
 import com.easylaw.app.util.Common.getBytesFromUri
@@ -62,7 +61,7 @@ class CommunityWriteViewModel
         @ApplicationContext private val context: Context,
         private val supabase: SupabaseClient,
         private val userSession: UserSession,
-        private val communityRepo: CommunityRepo,
+//        private val communityRepo: CommunityRepo,
         private val service: CommunityApiService,
     ) : ViewModel() {
         private val _commnuityWriteViewState = MutableStateFlow(CommunityWriteViewState())

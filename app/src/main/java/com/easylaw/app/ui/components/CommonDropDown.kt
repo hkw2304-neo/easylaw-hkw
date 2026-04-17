@@ -1,5 +1,4 @@
 package com.easylaw.app.ui.components
-import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -83,7 +82,7 @@ fun CategoryDropDown(
             ExposedDropdownMenu(
                 expanded = expanded,
                 onDismissRequest = {
-                    Log.d("드롭다운 클릭", "치ㅑ차!!!!!!!")
+//                    Log.d("드롭다운 클릭", "치ㅑ차!!!!!!!")
                     onExpandedChange()
                 },
                 modifier = Modifier.background(Color.White),
