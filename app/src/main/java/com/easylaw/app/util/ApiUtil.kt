@@ -26,6 +26,7 @@ object ApiUtil {
     const val BASE_URL = "https://www.law.go.kr/"
     const val NAVER_BASE_URL = "https://openapi.naver.com/"
 
+    // 로그 찍는용
     @Provides
     @Singleton
     fun provideLoggingInterceptor(): HttpLoggingInterceptor =
@@ -128,6 +129,10 @@ object ApiUtil {
 //            .addConverterFactory(GsonConverterFactory.create())
             .build()
     }
+
+    /*
+        컴포즈는 반환형보고 함수를 찾는다.
+     */
 
     @Provides
     @Singleton

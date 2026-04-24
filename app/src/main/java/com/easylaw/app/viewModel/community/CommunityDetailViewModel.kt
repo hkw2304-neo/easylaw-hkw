@@ -38,10 +38,10 @@ import io.github.jan.supabase.postgrest.query.Order
 import io.github.jan.supabase.postgrest.rpc
 import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.readBytes
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
@@ -117,7 +117,7 @@ class CommunityDetailViewModel
             loadAllDetailData()
         }
 
-        fun detailLoadData(func: suspend () -> Unit) {
+        fun detailLoadData(func: suspend CoroutineScope.() -> Unit) {
             viewModelScope.launch {
                 try {
                     _communityDetailViewState.update {
@@ -146,14 +146,12 @@ class CommunityDetailViewModel
 
         fun loadAllDetailData() {
             detailLoadData {
-                coroutineScope {
-                    val communityDetail = async { loadCommunityDetail(id = id) }
-                    val category = async { loadCategories() }
-                    val topCommenters = async { loadTopCommenters() }
-                    val comments = async { loadComments() }
+                val communityDetail = async { loadCommunityDetail(id = id) }
+                val category = async { loadCategories() }
+                val topCommenters = async { loadTopCommenters() }
+                val comments = async { loadComments() }
 
-                    awaitAll(communityDetail, category, topCommenters, comments)
-                }
+                awaitAll(communityDetail, category, topCommenters, comments)
             }
         }
 

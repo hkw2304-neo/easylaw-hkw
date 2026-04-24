@@ -12,6 +12,7 @@ import javax.inject.Singleton
 @Module
 @InstallIn(SingletonComponent::class)
 object AIModule {
+    // 최초 주입(@inject)되는 시점에 메모리에 적재
     @Provides
     @Singleton
     fun provideGenerativeModel(): GenerativeModel =

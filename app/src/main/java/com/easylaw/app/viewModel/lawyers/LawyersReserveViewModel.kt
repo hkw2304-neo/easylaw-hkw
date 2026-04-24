@@ -17,6 +17,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.storage.storage
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -93,7 +94,7 @@ class LawyersReserveViewModel
             }
         }
 
-        fun laywersReserveLoadData(loadFunc: suspend () -> Unit) {
+        fun laywersReserveLoadData(loadFunc: suspend CoroutineScope.() -> Unit) {
             viewModelScope.launch {
                 try {
                     _lawyersReserveViewState.update {

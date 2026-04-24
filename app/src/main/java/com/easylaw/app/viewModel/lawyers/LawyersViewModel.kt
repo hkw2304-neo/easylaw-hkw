@@ -11,7 +11,6 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.postgrest.from
 import kotlinx.coroutines.async
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
@@ -57,21 +56,19 @@ class LawyersViewModel
                 )
             }
 
-            viewModelScope.launch {
-                loadLawyers()
-            }
+            loadLawyers()
+
 //        Log.d("변호사 메뉴 userEmail", _lawyersViewState.value.userState.toString())
         }
 
-        suspend fun loadLawyers() {
-            try {
-                _lawyersViewState.update {
-                    it.copy(
-                        isLoading = true,
-                    )
-                }
-
-                coroutineScope {
+        fun loadLawyers() {
+            viewModelScope.launch {
+                try {
+                    _lawyersViewState.update {
+                        it.copy(
+                            isLoading = true,
+                        )
+                    }
                     val resLaywers =
                         async {
                             supabase.from("lawyers").select().decodeList<LawyersModel>()
@@ -87,6 +84,8 @@ class LawyersViewModel
                                 }.decodeList<LaywersReserveReqModel>()
                         }
 
+//                  val result = awaitAll(resLaywers, resReserve) awaitAll의 반환값을 가지고 한번 더 작업해야함
+                    // result[0], result[1]
                     val laywersInfo = resLaywers.await()
                     val reserveInfo = resReserve.await()
 //                Log.d("reserveInfo", "변호사 로드 성공: $reserveInfo")
@@ -102,14 +101,14 @@ class LawyersViewModel
                             isLoading = false,
                         )
                     }
+                } catch (e: Exception) {
+                    _lawyersViewState.update {
+                        it.copy(
+                            isLoading = false,
+                        )
+                    }
+                    Log.e("LawyersViewModel", "변호사 로드 실패: ${e.message}")
                 }
-            } catch (e: Exception) {
-                _lawyersViewState.update {
-                    it.copy(
-                        isLoading = false,
-                    )
-                }
-                Log.e("LawyersViewModel", "변호사 로드 실패: ${e.message}")
             }
         }
 

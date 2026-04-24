@@ -18,8 +18,9 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.storage.storage
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.async
-import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
@@ -61,22 +62,23 @@ class CommunityUpdateViewModel
         init {
 
             updateViewDataLoad {
-                coroutineScope {
-                    val categoryInfo =
-                        async {
-                            loadCategories()
-                        }
-                    val updateInfo =
-                        async {
-                            loadCommunityUpdate()
-                        }
-                    categoryInfo.await()
-                    updateInfo.await()
-                }
+
+                val categoryInfo =
+                    async {
+                        loadCategories()
+                    }
+                val updateInfo =
+                    async {
+                        loadCommunityUpdate()
+                    }
+                awaitAll(categoryInfo, updateInfo)
+
+//                    categoryInfo.await()
+//                    updateInfo.await()
             }
         }
 
-        fun updateViewDataLoad(func: suspend () -> Unit) {
+        fun updateViewDataLoad(func: suspend CoroutineScope.() -> Unit) {
             viewModelScope.launch {
                 try {
                     _commnuityUpdateViewState.update {

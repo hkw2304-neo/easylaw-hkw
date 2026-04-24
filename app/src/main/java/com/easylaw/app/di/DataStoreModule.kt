@@ -11,8 +11,11 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
 
-private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "user_prefs")
+// user_prefs 이름의 저장소 설정
+// 저장소 안에 키를 설정해서 원하는 정보 저장
+private val Context.dataStore by preferencesDataStore(name = "user_prefs")
 
+// 기본적인 싱글톤 전역 설정
 @Module
 @InstallIn(SingletonComponent::class)
 object DataStoreModule {

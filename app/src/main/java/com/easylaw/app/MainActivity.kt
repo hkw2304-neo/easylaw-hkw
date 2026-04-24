@@ -124,7 +124,10 @@ class MainActivity : FragmentActivity() {
         lifecycleScope.launch {
             try {
                 // first : 해당 키에는 하나의 값만 가지는데 이걸 가져오기 위함
+                // 기기에 저장된 세션 값을 먼저 확인 후 userSession 에 저장
                 val savedUser = preferenceManager.userData.first()
+                // collectAsState는 composable안에서만 사용 가능
+//                val savedUser by preferenceManager.userData.collectAsState()
 
                 val currentSupabaseSession = supabase.auth.currentSessionOrNull()
 
@@ -177,7 +180,7 @@ class MainActivity : FragmentActivity() {
 
 //                    Log.d("라우트 정리", currentRoute.toString())
                     // Language
-                    val languageState = remember { mutableStateOf(false) }
+                    var languageState by remember { mutableStateOf(false) }
                     val currentLanguageCode by preferenceManager.languageState.collectAsState()
                     val currentLanguageDisplay = LANGUAGE_DISPLAY_MAP[currentLanguageCode] ?: "한국어"
 
@@ -237,7 +240,7 @@ class MainActivity : FragmentActivity() {
                             NavRoute.LAYWERS_RESERVE,
                             NavRoute.LAYWERS_RESERVE_DETAIL,
                         )
-
+                    // 모달의 뜻이 화면을 덮는다는 뜻
                     ModalNavigationDrawer(
                         drawerState = drawerState,
                         // 사이드 바 가리는 용도
@@ -250,7 +253,7 @@ class MainActivity : FragmentActivity() {
                                 onLanguageClick = {
                                     scope.launch {
                                         drawerState.close()
-                                        languageState.value = true
+                                        languageState = true
                                     }
                                 },
                                 onMenuClick = { route ->
@@ -356,9 +359,9 @@ class MainActivity : FragmentActivity() {
                             )
                         }
                     }
-                    if (languageState.value) {
+                    if (languageState) {
                         ModalBottomSheet(
-                            onDismissRequest = { languageState.value = false },
+                            onDismissRequest = { languageState = false },
                             sheetState = sheetState,
                         ) {
                             LanguageBottombar(
@@ -368,7 +371,7 @@ class MainActivity : FragmentActivity() {
                                         preferenceManager.saveLanguage(selectedCode)
                                         applyLocale(this@MainActivity, selectedCode)
                                         sheetState.hide()
-                                        languageState.value = false
+                                        languageState = false
                                     }
                                 },
                             )

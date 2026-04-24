@@ -8,6 +8,7 @@ import com.easylaw.app.data.models.lawer.LaywersReserveReqModel
 import dagger.hilt.android.lifecycle.HiltViewModel
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.postgrest.from
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
@@ -46,7 +47,7 @@ class ReserveDetailViewModel
             }
         }
 
-        fun loadReserveDetailData(loadFunc: suspend () -> Unit) {
+        fun loadReserveDetailData(loadFunc: suspend CoroutineScope.() -> Unit) {
             viewModelScope.launch {
                 try {
                     _reserveDetailViewState.update {

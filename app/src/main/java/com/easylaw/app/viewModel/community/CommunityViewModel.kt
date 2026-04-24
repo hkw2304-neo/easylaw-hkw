@@ -5,6 +5,7 @@ import android.text.Html
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.easylaw.app.data.api.NaverNewsReqModel
 import com.easylaw.app.data.models.common.CategoryModel
 import com.easylaw.app.data.models.community.CommunityNewsModel
 import com.easylaw.app.data.models.community.CommunityPrecModel
@@ -21,8 +22,9 @@ import io.github.jan.supabase.postgrest.postgrest
 import io.github.jan.supabase.postgrest.query.Columns
 import io.github.jan.supabase.postgrest.query.Order
 import io.github.jan.supabase.postgrest.rpc
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.async
-import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
@@ -69,14 +71,13 @@ class CommunityViewModel
         init {
 
             communityViewLoad {
-                coroutineScope {
-                    val categoryInfo = async { loadCategories() } // 카테고리 시작!
-                    val listInfo = async { loadCommunityLists() } // 리스트 시작!
 
-                    // 두 작업이 모두 끝날 때까지 여기서 기다림 (동시 실행 완료)
-                    categoryInfo.await()
-                    listInfo.await()
-                }
+                val categoryInfo = async { loadCategories() } // 카테고리 시작!
+                val listInfo = async { loadCommunityLists() } // 리스트 시작!
+                // 두 작업이 모두 끝날 때까지 여기서 기다림 (동시 실행 완료)
+//                    categoryInfo.await()
+//                    listInfo.await()
+                awaitAll(categoryInfo, listInfo)
             }
         }
 
@@ -88,7 +89,8 @@ class CommunityViewModel
             _communityState.update { it.copy(isCommunityListLoading = false) }
         }
 
-        fun communityViewLoad(loadFunc: suspend () -> Unit) {
+        // suspend CoroutineScope.() 해당 함수는 백그라운드 안에서 실행될 것 명시
+        fun communityViewLoad(loadFunc: suspend CoroutineScope.() -> Unit) {
             viewModelScope.launch {
                 try {
                     startLoading()
@@ -126,7 +128,9 @@ class CommunityViewModel
                     )
                 }
 
-                val res = naverNewsRepo.getNaverNews(query)
+                val req = NaverNewsReqModel(query = query)
+
+                val res = naverNewsRepo.getNaverNews(req.toMap())
 //            Log.d("res", res.toString())
 
                 val formatItem =

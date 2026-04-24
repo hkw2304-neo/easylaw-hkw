@@ -9,5 +9,5 @@ class NaverNewsRepo
     constructor(
         private val service: NaverApiService,
     ) {
-        suspend fun getNaverNews(query: String): NaverNewsModel = service.getNaverNews(query)
+        suspend fun getNaverNews(query: Map<String, String>): NaverNewsModel = service.getNaverNews(query)
     }

@@ -64,10 +64,12 @@ class PreferenceManager
                     }
                 } catch (e: Exception) {
                     Log.e("preference error", e.toString())
-                    null
+                    UserInfo()
                 }
             }
 
+        // DataStore 저장시 백그라운드 단에서 호출
+        // 문자형, 인트형 같은 단순 자료형만 저장 가능 클래스 x 그래서 json 형태로 저장
         // 로그인 시 세션 정보 저장
         suspend fun saveUser(userInfo: UserInfo) {
             val json = Json.encodeToString(userInfo)
@@ -80,7 +82,9 @@ class PreferenceManager
 
         // 로그아웃
         suspend fun sessionClear() {
-            dataStore.edit { it.remove(userDataKey) }
+            dataStore.edit { prefs ->
+                prefs.remove(userDataKey)
+            }
         }
 
         suspend fun saveLanguage(languageCode: String) {
